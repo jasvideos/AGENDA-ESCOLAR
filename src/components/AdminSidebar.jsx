@@ -1,0 +1,135 @@
+import React, { useState } from 'react';
+import { Plus, Trash2, Layout, Download, Upload, Settings, ChevronDown } from 'lucide-react';
+import { slideTemplates } from '../templates';
+
+const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, deleteSlide, setExternalState }) => {
+  const [showSettings, setShowSettings] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+  const exportProject = () => {
+    const data = JSON.stringify(slides);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `meu_projeto.anix`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importProject = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setExternalState(parsed);
+          setActiveSlideId(parsed[0].id);
+        }
+      } catch (err) {
+        alert("Arquivo inválido ou corrompido.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = null;
+  };
+
+  return (
+    <aside className="glass" style={{ width: '260px', height: '100%', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '20px', borderBottom: '1px solid var(--border)' }}>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Layout className="text-accent" /> Anix Slides
+        </h2>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {slides.map((slide, index) => (
+            <div 
+              key={slide.id}
+              onClick={() => setActiveSlideId(slide.id)}
+              style={{
+                padding: '12px',
+                borderRadius: '8px',
+                background: activeSlideId === slide.id ? 'var(--accent)' : 'var(--bg-card)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'all 0.2s',
+                border: activeSlideId === slide.id ? 'none' : '1px solid var(--border)',
+                animation: 'fadeIn 0.3s ease-out'
+              }}
+            >
+              <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                {index + 1}. {slide.name}
+              </span>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteSlide(slide.id);
+                }}
+                style={{ background: 'transparent', border: 'none', color: 'white', opacity: 0.6, cursor: 'pointer' }}
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: '20px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ position: 'relative' }}>
+          <button className="button-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center' }} onClick={() => setShowTemplates(!showTemplates)}>
+            <Plus size={18} style={{ marginRight: '8px' }} /> Novo Slide <ChevronDown size={14} style={{ marginLeft: '5px' }} />
+          </button>
+          
+          {showTemplates && (
+            <div className="glass animate-fade-in" style={{ position: 'absolute', bottom: '45px', left: 0, width: '100%', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 50 }}>
+              <button className="button-secondary" style={{ textAlign: 'left', fontSize: '0.8rem' }} onClick={() => { addSlide(); setShowTemplates(false); }}>
+                Em Branco
+              </button>
+              {slideTemplates.map((tpl, i) => (
+                <button key={i} className="button-secondary" style={{ textAlign: 'left', fontSize: '0.8rem' }} onClick={() => { addSlide(tpl); setShowTemplates(false); }}>
+                  {tpl.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center' }} onClick={exportProject}>
+          <Download size={16} style={{ marginRight: '8px' }} /> Salvar (.anix)
+        </button>
+        <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center' }} onClick={() => document.getElementById('import-project').click()}>
+          <Upload size={16} style={{ marginRight: '8px' }} /> Abrir Projeto
+        </button>
+        <input type="file" id="import-project" style={{ display: 'none' }} accept=".anix,.json" onChange={importProject} />
+        
+        <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '10px', opacity: 0.8 }} onClick={() => setShowSettings(!showSettings)}>
+          <Settings size={16} style={{ marginRight: '8px' }} /> Configurações (IA)
+        </button>
+      </div>
+
+      {showSettings && (
+        <div style={{ padding: '15px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
+          <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Google Gemini API Key</label>
+          <input 
+            type="password" 
+            value={apiKey}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              localStorage.setItem('gemini_api_key', e.target.value);
+            }}
+            placeholder="Cole sua API Key aqui..."
+            style={{ width: '100%', marginBottom: '5px', fontSize: '0.8rem' }}
+          />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Sua chave é salva apenas neste navegador.</span>
+        </div>
+      )}
+    </aside>
+  );
+};
+
+export default AdminSidebar;
