@@ -274,11 +274,21 @@ function App() {
 
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
+    
+    const timeout = setTimeout(() => {
+      console.warn('Image load timeout:', src);
+      resolve(null);
+    }, 5000); // 5s timeout
+
     img.onload = () => {
+      clearTimeout(timeout);
       assetCache.current.set(src, img);
       resolve(img);
     };
-    img.onerror = () => resolve(null);
+    img.onerror = () => {
+      clearTimeout(timeout);
+      resolve(null);
+    };
     img.src = src;
   });
 
@@ -472,7 +482,11 @@ function App() {
         };
       });
 
-      const onStartPromise = new Promise(resolve => { recorder.onstart = resolve; });
+      // Aguarda o gravador realmente estar "quente" com timeout de segurança
+      const onStartPromise = new Promise(resolve => { 
+        const t = setTimeout(() => resolve(), 2000);
+        recorder.onstart = () => { clearTimeout(t); resolve(); }; 
+      });
       recorder.start(500);
       await onStartPromise;
 
