@@ -7,6 +7,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isClipdropProcessing, setIsClipdropProcessing] = useState(false);
+  const [isHFProcessing, setIsHFProcessing] = useState(false);
 
   if (!element) {
     return (
@@ -151,6 +152,68 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       setIsClipdropProcessing(false);
     }
   };
+
+  const handleHFRemoveText = async () => {
+    if (!element.src) return;
+    const hfKey = localStorage.getItem('hf_api_key');
+    if (!hfKey) {
+      alert('Configure sua Hugging Face API Key nas Configurações (⚙️). É grátis em huggingface.co/settings/tokens');
+      return;
+    }
+    setIsHFProcessing(true);
+    try {
+      // Converte src para Blob
+      const srcRes = await fetch(element.src);
+      const imageBlob = await srcRes.blob();
+
+      // Usa o modelo instruct-pix2pix para remover texto com instrução em linguagem natural
+      const response = await fetch(
+        'https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${hfKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inputs: {
+              image: await blobToBase64(imageBlob),
+              prompt: 'remove all text, watermarks, labels and overlays from the image, keep the original background clean',
+              negative_prompt: 'text, watermark, label, letters, numbers, words',
+              num_inference_steps: 20,
+              image_guidance_scale: 1.5,
+            }
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || `Erro ${response.status}`);
+      }
+
+      const resultBlob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => updateElement(element.id, { src: reader.result });
+      reader.readAsDataURL(resultBlob);
+    } catch (err) {
+      console.error('HF error:', err);
+      if (err.message.includes('loading')) {
+        alert('⏳ O modelo está carregando no servidor. Tente novamente em 30 segundos.');
+      } else {
+        alert(`Falha no Hugging Face: ${err.message}`);
+      }
+    } finally {
+      setIsHFProcessing(false);
+    }
+  };
+
+  const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 
   const generateAIText = async (promptType) => {
     if (!element.content) return;
@@ -378,7 +441,10 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
                 {isRemovingBg ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando...</>) : (<><Wand2 size={16} style={{ marginRight: '8px' }} /> Apagar Fundo da Foto</>)}
               </button>
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #0ea5e9, #0284c7)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={() => handleClipdropTool('remove-text')} disabled={isClipdropProcessing}>
-                {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando Clipdrop...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Remover Texto da Imagem</>)}
+                {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando Clipdrop...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Remover Texto (Clipdrop)</>)}
+              </button>
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f97316, #ea580c)', color: 'white', border: 'none', opacity: isHFProcessing ? 0.7 : 1, cursor: isHFProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleHFRemoveText} disabled={isHFProcessing}>
+                {isHFProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> IA Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> 🤗 Remover Texto (HF Grátis)</>)}
               </button>
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f59e0b, #d97706)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer' }} onClick={() => handleClipdropTool('upscale')} disabled={isClipdropProcessing}>
                 {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Melhorar Qualidade (Upscale)</>)}

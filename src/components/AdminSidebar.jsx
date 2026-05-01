@@ -10,6 +10,7 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
   const [unsplashKey, setUnsplashKey] = useState(localStorage.getItem('unsplash_api_key') || '');
   const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('pexels_api_key') || '');
   const [clipdropKey, setClipdropKey] = useState(localStorage.getItem('clipdrop_api_key') || '');
+  const [hfKey, setHfKey] = useState(localStorage.getItem('hf_api_key') || '');
   const exportProject = () => {
     const data = JSON.stringify(slides);
     const blob = new Blob([data], { type: 'application/json' });
@@ -208,7 +209,20 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
             placeholder="Cole sua Clipdrop API Key aqui..."
             style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
           />
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Grátis em <a href="https://clipdrop.co/apis" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>clipdrop.co/apis</a> (~100 imagens/dia)</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '12px' }}>Grátis em <a href="https://clipdrop.co/apis" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>clipdrop.co/apis</a> (~100 imagens/dia)</span>
+
+          <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>🤗 Hugging Face API Key (IA Gratuita)</label>
+          <input 
+            type="password" 
+            value={hfKey}
+            onChange={(e) => {
+              setHfKey(e.target.value);
+              localStorage.setItem('hf_api_key', e.target.value);
+            }}
+            placeholder="hf_..."
+            style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
+          />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Grátis em <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>huggingface.co/settings/tokens</a> — Remover texto, limpar imagens</span>
         </div>
       )}
     </aside>

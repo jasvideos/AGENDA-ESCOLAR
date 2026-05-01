@@ -55,6 +55,10 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState({ current: 0, total: 0, slideName: '' });
   const [showElementsMenu, setShowElementsMenu] = useState(false);
+  const [iconSearchQuery, setIconSearchQuery] = useState('');
+  const [iconSearchResults, setIconSearchResults] = useState([]);
+  const [iconSearchLoading, setIconSearchLoading] = useState(false);
+  const [elementsTab, setElementsTab] = useState('library'); // 'library' | 'search'
   const [presentationScale, setPresentationScale] = useState(1);
   const [copiedElement, setCopiedElement] = useState(null);
   const activeSlideIdRef = useRef(activeSlideId);
@@ -644,19 +648,90 @@ function App() {
               <div style={{ position: 'relative' }}>
                 <button className="button-secondary" onClick={() => setShowElementsMenu(!showElementsMenu)}><Sparkles size={18} /> Elementos</button>
                 {showElementsMenu && (
-                  <div className="glass animate-fade-in" style={{ position: 'absolute', top: '45px', left: '0', width: '320px', padding: '15px', borderRadius: '8px', zIndex: 100, maxHeight: '400px', overflowY: 'auto' }}>
-                    {decorativeElements.map((cat, i) => (
-                      <div key={i} style={{ marginBottom: '10px' }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{cat.category}</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                          {cat.items.map((it, j) => (
-                            <button key={j} className="button-secondary" onClick={() => { addElement('svg', { svg: it.svg }); setShowElementsMenu(false); }} style={{ width: '40px', height: '40px' }}>
-                              <div style={{ width: '100%', height: '100%', color: 'white' }} dangerouslySetInnerHTML={{ __html: it.svg }} />
-                            </button>
-                          ))}
+                  <div className="glass animate-fade-in" style={{ position: 'absolute', top: '45px', left: '0', width: '360px', borderRadius: '10px', zIndex: 100, overflow: 'hidden' }}>
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+                      <button onClick={() => setElementsTab('library')} style={{ flex: 1, padding: '10px', background: elementsTab === 'library' ? 'var(--accent)' : 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>✨ Biblioteca</button>
+                      <button onClick={() => setElementsTab('search')} style={{ flex: 1, padding: '10px', background: elementsTab === 'search' ? 'var(--accent)' : 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>🔍 Buscar Ícones</button>
+                    </div>
+                    {/* Library Tab */}
+                    {elementsTab === 'library' && (
+                      <div style={{ padding: '12px', maxHeight: '380px', overflowY: 'auto' }}>
+                        {decorativeElements.map((cat, i) => (
+                          <div key={i} style={{ marginBottom: '10px' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--text-muted)' }}>{cat.category}</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                              {cat.items.map((it, j) => (
+                                <button key={j} className="button-secondary" onClick={() => { addElement('svg', { svg: it.svg }); setShowElementsMenu(false); }} style={{ width: '40px', height: '40px' }}>
+                                  <div style={{ width: '100%', height: '100%', color: 'white' }} dangerouslySetInnerHTML={{ __html: it.svg }} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Iconify Search Tab */}
+                    {elementsTab === 'search' && (
+                      <div style={{ padding: '12px' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '8px' }}>🆓 200.000+ ícones gratuitos (sem chave API)</div>
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                          <input
+                            type="text"
+                            value={iconSearchQuery}
+                            onChange={e => setIconSearchQuery(e.target.value)}
+                            onKeyDown={async e => {
+                              if (e.key === 'Enter' && iconSearchQuery.trim()) {
+                                setIconSearchLoading(true);
+                                try {
+                                  const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(iconSearchQuery)}&limit=40`);
+                                  const data = await res.json();
+                                  setIconSearchResults(data.icons || []);
+                                } catch { setIconSearchResults([]); }
+                                setIconSearchLoading(false);
+                              }
+                            }}
+                            placeholder="escola, estrela, coração..."
+                            style={{ flex: 1, fontSize: '0.8rem', padding: '6px 10px' }}
+                            autoFocus
+                          />
+                          <button className="button-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={async () => {
+                            if (!iconSearchQuery.trim()) return;
+                            setIconSearchLoading(true);
+                            try {
+                              const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(iconSearchQuery)}&limit=40`);
+                              const data = await res.json();
+                              setIconSearchResults(data.icons || []);
+                            } catch { setIconSearchResults([]); }
+                            setIconSearchLoading(false);
+                          }}>{iconSearchLoading ? '...' : '🔍'}</button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px', maxHeight: '280px', overflowY: 'auto' }}>
+                          {iconSearchResults.map((iconId, i) => {
+                            const [prefix, name] = iconId.split(':');
+                            const svgUrl = `https://api.iconify.design/${prefix}/${name}.svg?color=white`;
+                            return (
+                              <button key={i} className="button-secondary" title={iconId}
+                                style={{ width: '38px', height: '38px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(svgUrl);
+                                    const svgText = await res.text();
+                                    addElement('svg', { svg: svgText });
+                                    setShowElementsMenu(false);
+                                  } catch { alert('Erro ao carregar ícone'); }
+                                }}
+                              >
+                                <img src={svgUrl} alt={name} style={{ width: '22px', height: '22px', filter: 'invert(1)' }} />
+                              </button>
+                            );
+                          })}
+                          {!iconSearchLoading && iconSearchResults.length === 0 && (
+                            <div style={{ gridColumn: 'span 8', textAlign: 'center', color: 'var(--text-muted)', padding: '20px', fontSize: '0.8rem' }}>Digite e pressione Enter para buscar</div>
+                          )}
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
