@@ -14,6 +14,7 @@
     "@imgly/background-removal": "^1.7.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.11.0",
+    "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

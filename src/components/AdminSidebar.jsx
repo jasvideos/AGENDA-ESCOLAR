@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Layout, Download, Upload, Settings, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Layout, Download, Upload, Settings, ChevronDown, Clock } from 'lucide-react';
 import { slideTemplates } from '../templates';
 
-const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, deleteSlide, setExternalState }) => {
+const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, deleteSlide, setExternalState, updateSlide }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
@@ -51,30 +51,59 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
               key={slide.id}
               onClick={() => setActiveSlideId(slide.id)}
               style={{
-                padding: '12px',
+                padding: '10px 12px',
                 borderRadius: '8px',
                 background: activeSlideId === slide.id ? 'var(--accent)' : 'var(--bg-card)',
                 cursor: 'pointer',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                flexDirection: 'column',
+                gap: '8px',
                 transition: 'all 0.2s',
                 border: activeSlideId === slide.id ? 'none' : '1px solid var(--border)',
                 animation: 'fadeIn 0.3s ease-out'
               }}
             >
-              <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
-                {index + 1}. {slide.name}
-              </span>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteSlide(slide.id);
-                }}
-                style={{ background: 'transparent', border: 'none', color: 'white', opacity: 0.6, cursor: 'pointer' }}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                  {index + 1}. {slide.name}
+                </span>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteSlide(slide.id);
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: 'white', opacity: 0.6, cursor: 'pointer' }}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              
+              {/* Per-slide duration */}
+              <div 
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.85 }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <Trash2 size={16} />
-              </button>
+                <Clock size={12} style={{ flexShrink: 0, opacity: 0.7 }} />
+                <input
+                  type="number"
+                  min="1"
+                  max="300"
+                  value={slide.duration ?? 5}
+                  onChange={(e) => updateSlide(slide.id, { duration: Math.max(1, Number(e.target.value)) })}
+                  style={{
+                    width: '45px',
+                    background: 'rgba(255,255,255,0.12)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '4px',
+                    padding: '2px 4px',
+                    fontSize: '0.75rem',
+                    textAlign: 'center',
+                    color: 'inherit'
+                  }}
+                  title="Duração deste slide (segundos)"
+                />
+                <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>s</span>
+              </div>
             </div>
           ))}
         </div>

@@ -1,16 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AdminSidebar from './components/AdminSidebar';
 import SlideCanvas from './components/SlideCanvas';
 import PropertyPanel from './components/PropertyPanel';
-import { Plus, Play, Square, Type, Image as ImageIcon, Circle, Repeat, Clock, X, Download, Video, Undo, Redo, QrCode } from 'lucide-react';
+import { Plus, Play, Square, Type, Image as ImageIcon, Circle, Repeat, Video, Undo, Redo, QrCode, Loader2, Sparkles } from 'lucide-react';
 import { useHistory } from './hooks/useHistory';
+import QRCode from 'qrcode';
+import { decorativeElements } from './templates';
 
 const STORAGE_KEY = 'anix_slides_data';
+
+const SLIDE_W = 960;
+const SLIDE_H = 540;
+const VIDEO_W = 1920;
+const VIDEO_H = 1080;
+const DEFAULT_DURATION = 5;
 
 const initialSlides = [
   {
     id: 'slide-1',
     name: 'Slide 1',
+    duration: DEFAULT_DURATION,
     elements: [
       {
         id: 'el-1',
@@ -29,7 +38,9 @@ const initialSlides = [
 function App() {
   const [slides, setSlides, undo, redo, setExternalState] = useHistory(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : initialSlides;
+    const parsed = saved ? JSON.parse(saved) : initialSlides;
+    // Ensure all slides have a duration field
+    return parsed.map(s => ({ duration: DEFAULT_DURATION, ...s }));
   });
   const [activeSlideId, setActiveSlideId] = useState(slides[0]?.id);
   const [selectedElementId, setSelectedElementId] = useState(null);
@@ -37,7 +48,11 @@ function App() {
   const [showShapeMenu, setShowShapeMenu] = useState(false);
   const [showImageMenu, setShowImageMenu] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
-  const [slideDuration, setSlideDuration] = useState(5); // seconds
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState({ current: 0, total: 0, slideName: '' });
+  const [showElementsMenu, setShowElementsMenu] = useState(false);
+  const [presentationScale, setPresentationScale] = useState(1);
+  const activeSlideIdRef = useRef(activeSlideId);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(slides));
@@ -61,21 +76,38 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo, isPresenting]);
 
-  // Auto-play loop logic
   useEffect(() => {
-    let interval;
-    if (isLooping && slides.length > 1) {
-      interval = setInterval(() => {
-        setSlides(prevSlides => {
-          const currentIndex = prevSlides.findIndex(s => s.id === activeSlideId);
-          const nextIndex = (currentIndex + 1) % prevSlides.length;
-          setActiveSlideId(prevSlides[nextIndex].id);
-          return prevSlides;
-        });
-      }, slideDuration * 1000);
+    if (isPresenting) {
+      const handleResize = () => {
+        setPresentationScale(Math.min(window.innerWidth / 960, window.innerHeight / 540));
+      };
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    } else {
+      setPresentationScale(1);
     }
-    return () => clearInterval(interval);
-  }, [isLooping, activeSlideId, slideDuration, slides.length]);
+  }, [isPresenting]);
+
+  useEffect(() => {
+    activeSlideIdRef.current = activeSlideId;
+  }, [activeSlideId]);
+
+  // Auto-play loop logic (uses per-slide duration)
+  useEffect(() => {
+    if (!isLooping || slides.length <= 1) return;
+    const currentSlide = slides.find(s => s.id === activeSlideId);
+    const duration = (currentSlide?.duration || DEFAULT_DURATION) * 1000;
+    const timer = setTimeout(() => {
+      setSlides(prevSlides => {
+        const currentIndex = prevSlides.findIndex(s => s.id === activeSlideIdRef.current);
+        const nextIndex = (currentIndex + 1) % prevSlides.length;
+        setActiveSlideId(prevSlides[nextIndex].id);
+        return prevSlides;
+      });
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [isLooping, activeSlideId, slides]);
 
   const activeSlide = slides.find(s => s.id === activeSlideId) || slides[0];
 
@@ -86,6 +118,7 @@ function App() {
       bgColor: template ? template.bgColor : '#111827',
       bgImage: template ? template.bgImage : null,
       bgOpacity: template ? template.bgOpacity : 1,
+      duration: DEFAULT_DURATION,
       elements: template ? template.elements.map(el => ({ ...el, id: `el-${Date.now()}-${Math.random()}` })) : []
     };
     setSlides([...slides, newSlide]);
@@ -108,14 +141,14 @@ function App() {
       y: 150,
       w: preset.w || (type === 'text' ? 200 : 300),
       h: preset.h || (type === 'text' ? 50 : (type === 'shape' ? 150 : 200)),
-      content: type === 'text' ? 'Novo Texto' : '',
+      content: type === 'text' ? 'Novo Texto' : (type === 'svg' ? preset.svg : ''),
       src: type === 'image' ? 'https://via.placeholder.com/300x200?text=Sua+Imagem' : '',
       shapeType: type === 'shape' ? 'rectangle' : null,
       style: type === 'text' 
         ? { fontSize: '20px', color: '#ffffff' } 
         : (type === 'shape' 
             ? { backgroundColor: '#6366f1', borderRadius: preset.borderRadius || '0px' } 
-            : {})
+            : (type === 'svg' ? { color: '#ffffff' } : {}))
     };
 
     setSlides(slides.map(s => 
@@ -215,49 +248,235 @@ function App() {
     }));
   };
 
-  const updateSlide = (updates) => {
-    setSlides(slides.map(s => s.id === activeSlideId ? { ...s, ...updates } : s));
+  const updateSlide = (slideIdOrUpdates, updates) => {
+    // If called with (updates) — updates active slide
+    // If called with (slideId, updates) — updates specific slide
+    const targetId = typeof slideIdOrUpdates === 'string' ? slideIdOrUpdates : activeSlideId;
+    const payload = typeof slideIdOrUpdates === 'string' ? updates : slideIdOrUpdates;
+    setSlides(slides.map(s => s.id === targetId ? { ...s, ...payload } : s));
   };
 
   const selectedElement = activeSlide?.elements.find(el => el.id === selectedElementId);
 
-  const exportVideo = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 },
-        audio: false
-      });
+  // ─── Canvas-based Full HD video export ───────────────────────────────────
+  const loadImage = (src) => new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
 
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  const renderSlideToCanvas = async (ctx, slide, scaleX, scaleY) => {
+    ctx.clearRect(0, 0, VIDEO_W, VIDEO_H);
+
+    // Background color
+    ctx.fillStyle = slide.bgColor || '#111827';
+    ctx.fillRect(0, 0, VIDEO_W, VIDEO_H);
+
+    // Background image
+    if (slide.bgImage) {
+      const bgImg = await loadImage(slide.bgImage);
+      if (bgImg) {
+        const opacity = slide.bgOpacity !== undefined ? slide.bgOpacity : 1;
+        ctx.globalAlpha = opacity;
+        // Cover fit
+        const ar = bgImg.width / bgImg.height;
+        const canvasAr = VIDEO_W / VIDEO_H;
+        let sx, sy, sw, sh;
+        if (ar > canvasAr) {
+          sh = bgImg.height; sw = sh * canvasAr;
+          sx = (bgImg.width - sw) / 2; sy = 0;
+        } else {
+          sw = bgImg.width; sh = sw / canvasAr;
+          sx = 0; sy = (bgImg.height - sh) / 2;
+        }
+        ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, VIDEO_W, VIDEO_H);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Elements (in order)
+    for (const el of slide.elements) {
+      const cx = el.x * scaleX;
+      const cy = el.y * scaleY;
+      const w = (parseFloat(el.w) || 0) * scaleX;
+      const h = (parseFloat(el.h) || 0) * scaleY;
+      const opacity = el.style?.opacity !== undefined ? el.style.opacity : 1;
+      const rotation = el.rotation || 0;
+
+      // Apply rotation transform around element center
+      ctx.save();
+      if (rotation !== 0) {
+        ctx.translate(cx + w / 2, cy + h / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.translate(-(cx + w / 2), -(cy + h / 2));
+      }
+      ctx.globalAlpha = opacity;
+
+      const x = cx, y = cy;
+
+      // Helper: hex+alpha to rgba string
+      const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+        return `rgba(${r},${g},${b},${alpha})`;
+      };
+
+      if (el.type === 'image') {
+        const img = await loadImage(el.src);
+        if (img) ctx.drawImage(img, x, y, w, h);
+
+      } else if (el.type === 'shape') {
+        const radius = Math.min(parseInt(el.style?.borderRadius) || 0, w / 2, h / 2);
+        ctx.beginPath();
+        if (radius > 0) {
+          ctx.moveTo(x + radius, y); ctx.arcTo(x + w, y, x + w, y + h, radius);
+          ctx.arcTo(x + w, y + h, x, y + h, radius); ctx.arcTo(x, y + h, x, y, radius);
+          ctx.arcTo(x, y, x + w, y, radius); ctx.closePath();
+        } else { ctx.rect(x, y, w, h); }
+        if (el.style?.useGradient && el.style?.gradientColor) {
+          const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+          grad.addColorStop(0, el.style.backgroundColor || '#6366f1');
+          grad.addColorStop(1, el.style.gradientColor);
+          ctx.fillStyle = grad;
+        } else { ctx.fillStyle = el.style?.backgroundColor || '#6366f1'; }
+        ctx.fill();
+        const bw = parseInt(el.style?.borderWidth) || 0;
+        if (bw > 0) { ctx.strokeStyle = el.style?.borderColor || '#ffffff'; ctx.lineWidth = bw * scaleX; ctx.stroke(); }
+
+      } else if (el.type === 'text') {
+        const fontSize = parseFloat(el.style?.fontSize) || 20;
+        const fontFamily = el.style?.fontFamily || 'Inter';
+        const fontWeight = el.style?.fontWeight || 'normal';
+        const color = el.style?.color || '#ffffff';
+        const bg = el.style?.backgroundColor;
+        const hasBg = bg && bg !== 'transparent';
+
+        if (hasBg) {
+          // FIX: use bgOpacity for tarja, independent of text opacity
+          const bgOpacity = el.style?.bgOpacity !== undefined ? el.style.bgOpacity : 1;
+          ctx.globalAlpha = bgOpacity;
+          if (el.style?.useGradient && el.style?.gradientColor) {
+            const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+            const c1 = bg.startsWith('#') ? hexToRgba(bg, bgOpacity) : bg;
+            const c2 = el.style.gradientColor.startsWith('#') ? hexToRgba(el.style.gradientColor, bgOpacity) : el.style.gradientColor;
+            grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+            ctx.fillStyle = grad;
+          } else {
+            ctx.fillStyle = bg.startsWith('#') ? hexToRgba(bg, bgOpacity) : bg;
+          }
+          const r = 4 * scaleX;
+          ctx.beginPath();
+          ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+          ctx.fill();
+          const bw = parseInt(el.style?.borderWidth) || 0;
+          if (bw > 0) { ctx.strokeStyle = el.style?.borderColor || '#ffffff'; ctx.lineWidth = bw * scaleX; ctx.stroke(); }
+          ctx.globalAlpha = opacity; // restore for text
+        }
+
+        ctx.fillStyle = color;
+        ctx.font = `${fontWeight} ${fontSize * scaleY}px '${fontFamily}', sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const words = (el.content || '').split(' ');
+        const maxWidth = w - 40 * scaleX;
+        const lineHeight = fontSize * scaleY * 1.3;
+        const lines = []; let line = '';
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+          if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; } else { line = test; }
+        }
+        if (line) lines.push(line);
+        const totalH = lines.length * lineHeight;
+        const startY = y + h / 2 - totalH / 2 + lineHeight / 2;
+        lines.forEach((l, i) => ctx.fillText(l, x + w / 2, startY + i * lineHeight, maxWidth));
+
+      } else if (el.type === 'qrcode') {
+        try {
+          const qrDataUrl = await QRCode.toDataURL(el.content || 'https://anix.com', { width: Math.round(w), margin: 1, color: { dark: '#000000', light: '#ffffff' } });
+          const qrImg = await loadImage(qrDataUrl);
+          if (qrImg) {
+            ctx.fillStyle = '#ffffff';
+            const pad = 10 * scaleX, r = 8 * scaleX;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
+            ctx.drawImage(qrImg, x + pad, y + pad, w - pad * 2, h - pad * 2);
+          }
+        } catch {}
+      } else if (el.type === 'svg') {
+        try {
+          const svgString = (el.content || '').replace(/currentColor/g, el.style?.color || '#ffffff');
+          const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const svgImg = await loadImage(url);
+          if (svgImg) {
+             ctx.drawImage(svgImg, x, y, w, h);
+          }
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+      ctx.restore();
+    }
+  };
+
+  const exportVideo = async () => {
+    if (isRecording) return;
+    setIsRecording(true);
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = VIDEO_W;
+      canvas.height = VIDEO_H;
+      const ctx = canvas.getContext('2d');
+      const scaleX = VIDEO_W / SLIDE_W;
+      const scaleY = VIDEO_H / SLIDE_H;
+
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm';
+
+      const stream = canvas.captureStream(30);
       const recorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9'
+        mimeType,
+        videoBitsPerSecond: 12_000_000 // 12 Mbps — cinema quality for TV
       });
 
       const chunks = [];
-      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `apresentacao-anix-${Date.now()}.webm`;
+        a.download = `anixslide-fullhd-${Date.now()}.webm`;
         a.click();
         URL.revokeObjectURL(url);
-        setIsLooping(false);
-        setIsPresenting(false);
+        setIsRecording(false);
+        setRecordingProgress({ current: 0, total: 0, slideName: '' });
       };
 
-      recorder.start();
-      setIsPresenting(true);
-      setIsLooping(true);
+      recorder.start(100); // collect data every 100ms
 
-      alert("A gravação começou. Selecione esta aba para gravar. Pare a partilha de ecrã para terminar e guardar o vídeo.");
-      
-      stream.getVideoTracks()[0].onended = () => {
-        recorder.stop();
-      };
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        const duration = (slide.duration || DEFAULT_DURATION) * 1000;
+        setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
+        await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
+        await sleep(duration);
+      }
 
+      recorder.stop();
     } catch (err) {
-      console.error("Erro ao exportar vídeo:", err);
+      console.error('Erro ao gravar vídeo:', err);
+      alert('Erro ao gravar o vídeo. Verifique o console para mais detalhes.');
+      setIsRecording(false);
     }
   };
 
@@ -271,6 +490,7 @@ function App() {
           addSlide={addSlide}
           deleteSlide={deleteSlide}
           setExternalState={setExternalState}
+          updateSlide={updateSlide}
         />
       )}
       
@@ -346,6 +566,51 @@ function App() {
                   </div>
                 )}
               </div>
+              
+              <div style={{ position: 'relative' }}>
+                <button className="button-secondary" onClick={() => setShowElementsMenu(!showElementsMenu)}>
+                  <Sparkles size={18} /> Elementos
+                </button>
+                
+                {showElementsMenu && (
+                  <div className="glass animate-fade-in" style={{ 
+                    position: 'absolute', 
+                    top: '45px', 
+                    left: '0', 
+                    width: '320px', 
+                    padding: '15px', 
+                    borderRadius: '8px',
+                    zIndex: 100,
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    maxHeight: '400px',
+                    overflowY: 'auto'
+                  }}>
+                    <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Repositório Grátis</h4>
+                    {decorativeElements.map((category, i) => (
+                      <div key={i} style={{ marginBottom: '15px' }}>
+                        <div style={{ fontSize: '0.8rem', marginBottom: '8px', fontWeight: 'bold' }}>{category.category}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {category.items.map((item, j) => (
+                            <button
+                              key={j}
+                              className="button-secondary"
+                              style={{ width: '40px', height: '40px', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onClick={() => {
+                                addElement('svg', { svg: item.svg, w: 100, h: 100 });
+                                setShowElementsMenu(false);
+                              }}
+                              title={item.name}
+                            >
+                              <div style={{ width: '100%', height: '100%', color: 'white' }} dangerouslySetInnerHTML={{ __html: item.svg }} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button className="button-secondary" onClick={() => addElement('qrcode', { content: 'https://exemplo.com', w: 150, h: 150 })}>
                 <QrCode size={18} /> QR Code
               </button>
@@ -359,18 +624,6 @@ function App() {
                </button>
                
                <div style={{ width: '1px', height: '24px', background: 'var(--border)', margin: '0 5px' }}></div>
-
-               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginRight: '10px', padding: '5px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)' }}>
-                 <Clock size={16} className="text-muted" />
-                 <input 
-                   type="number" 
-                   value={slideDuration}
-                   onChange={(e) => setSlideDuration(Number(e.target.value))}
-                   style={{ width: '45px', background: 'transparent', border: 'none', padding: '2px', fontSize: '0.9rem', textAlign: 'center' }}
-                   title="Segundos por slide"
-                 />
-                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>s</span>
-               </div>
 
                <button 
                 className="button-secondary" 
@@ -386,14 +639,32 @@ function App() {
               <button 
                 className="button-secondary" 
                 onClick={exportVideo}
-                title="Gravar apresentação e baixar vídeo"
+                disabled={isRecording}
+                title="Gravar apresentação em Full HD (1920×1080) para TV"
+                style={{
+                  opacity: isRecording ? 0.7 : 1,
+                  cursor: isRecording ? 'not-allowed' : 'pointer',
+                  background: isRecording ? 'linear-gradient(45deg, #dc2626, #991b1b)' : undefined,
+                  color: isRecording ? 'white' : undefined,
+                  border: isRecording ? 'none' : undefined,
+                  minWidth: '160px'
+                }}
               >
-                <Video size={18} style={{ marginRight: '5px' }} /> Gravar Vídeo
+                {isRecording ? (
+                  <><Loader2 size={16} style={{ marginRight: '6px', animation: 'spin 1s linear infinite' }} />
+                  {recordingProgress.current}/{recordingProgress.total} — {recordingProgress.slideName}</>
+                ) : (
+                  <><Video size={18} style={{ marginRight: '5px' }} /> Gravar Full HD</>
+                )}
               </button>
 
                <button className="button-primary" style={{ background: '#22c55e' }} onClick={() => {
                  setIsPresenting(true);
                  if (slides.length > 1) setIsLooping(true);
+                 const elem = document.getElementById('presentation-container');
+                 if (elem?.requestFullscreen) {
+                   elem.requestFullscreen().catch(err => console.log(err));
+                 }
                }}>
                 <Play size={18} /> Apresentar
               </button>
@@ -401,9 +672,11 @@ function App() {
           </header>
         )}
 
-        <div style={{ 
+        <div 
+          id="presentation-container"
+          style={{ 
           flex: 1, 
-          overflow: 'auto', 
+          overflow: 'hidden', 
           padding: isPresenting ? '0' : '40px', 
           background: '#020617', 
           display: 'flex', 
@@ -415,19 +688,30 @@ function App() {
             <button 
               className="button-secondary" 
               style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 200, opacity: 0.5 }}
-              onClick={() => setIsPresenting(false)}
+              onClick={() => {
+                setIsPresenting(false);
+                if (document.fullscreenElement) {
+                  document.exitFullscreen().catch(err => console.log(err));
+                }
+              }}
             >
               Sair da Apresentação
             </button>
           )}
-          <SlideCanvas 
-            slide={activeSlide} 
-            selectedElementId={selectedElementId}
-            setSelectedElementId={setSelectedElementId}
-            updateElement={updateElement}
-            readOnly={isPresenting}
-            deleteElement={deleteElement}
-          />
+          <div style={{
+            transform: isPresenting ? `scale(${presentationScale})` : 'none',
+            transformOrigin: 'center center',
+            transition: 'transform 0.3s'
+          }}>
+            <SlideCanvas 
+              slide={activeSlide} 
+              selectedElementId={selectedElementId}
+              setSelectedElementId={setSelectedElementId}
+              updateElement={updateElement}
+              readOnly={isPresenting}
+              deleteElement={deleteElement}
+            />
+          </div>
         </div>
       </main>
 
