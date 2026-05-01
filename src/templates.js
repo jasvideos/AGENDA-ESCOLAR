@@ -22,57 +22,33 @@ export const bgGallery = [
 
 // ── Decorative SVG elements for the repository ──────────────────────────────
 export const decorativeElements = [
-  // ── Estrelas / Stars ──
+  // ── Memphis Style (Novo) ──
   {
-    category: 'Estrelas',
+    category: 'Memphis & Moderno',
     items: [
-      { name: 'Estrela 5pts', svg: `<svg viewBox="0 0 100 100"><polygon points="50,5 61,35 95,35 68,57 79,91 50,70 21,91 32,57 5,35 39,35" fill="currentColor"/></svg>` },
-      { name: 'Estrela 6pts', svg: `<svg viewBox="0 0 100 100"><polygon points="50,5 61,25 84,15 74,38 95,50 74,62 84,85 61,75 50,95 39,75 16,85 26,62 5,50 26,38 16,15 39,25" fill="currentColor"/></svg>` },
-      { name: 'Estrela 4pts', svg: `<svg viewBox="0 0 100 100"><polygon points="50,5 58,42 95,50 58,58 50,95 42,58 5,50 42,42" fill="currentColor"/></svg>` },
-      { name: 'Estrela Dupla', svg: `<svg viewBox="0 0 100 100"><polygon points="50,10 55,45 90,50 55,55 50,90 45,55 10,50 45,45" fill="currentColor" opacity="0.9"/><polygon points="50,25 53,47 75,50 53,53 50,75 47,53 25,50 47,47" fill="currentColor" opacity="0.5"/></svg>` },
+      { name: 'Blob Orgânico', svg: `<svg viewBox="0 0 200 200"><path d="M44.7,-76.4C58.3,-69.2,69.8,-57.3,77.5,-43.3C85.2,-29.3,89.1,-13.2,88.4,2.5C87.7,18.2,82.4,33.5,73.5,46.5C64.6,59.5,52.1,70.2,38.1,76.5C24.1,82.8,8.6,84.7,-6.7,83.1C-22,81.5,-37.1,76.4,-50,68.1C-62.9,59.8,-73.6,48.3,-79.6,34.8C-85.6,21.3,-86.9,5.8,-84.4,-9C-81.9,-23.8,-75.6,-37.9,-65.8,-49.6C-56,-61.3,-42.7,-70.6,-28.9,-77.1C-15.1,-83.6,-0.8,-87.3,14.2,-85.2C29.2,-83.1,44.7,-76.4,44.7,-76.4Z" transform="translate(100 100)" fill="currentColor"/></svg>` },
+      { name: 'Grid de Pontos', svg: `<svg viewBox="0 0 100 100"><circle cx="10" cy="10" r="2" fill="currentColor"/><circle cx="30" cy="10" r="2" fill="currentColor"/><circle cx="50" cy="10" r="2" fill="currentColor"/><circle cx="70" cy="10" r="2" fill="currentColor"/><circle cx="90" cy="10" r="2" fill="currentColor"/><circle cx="10" cy="30" r="2" fill="currentColor"/><circle cx="30" cy="30" r="2" fill="currentColor"/><circle cx="50" cy="30" r="2" fill="currentColor"/><circle cx="70" cy="30" r="2" fill="currentColor"/><circle cx="90" cy="30" r="2" fill="currentColor"/><circle cx="10" cy="50" r="2" fill="currentColor"/><circle cx="30" cy="50" r="2" fill="currentColor"/><circle cx="50" cy="50" r="2" fill="currentColor"/><circle cx="70" cy="50" r="2" fill="currentColor"/><circle cx="90" cy="50" r="2" fill="currentColor"/><circle cx="10" cy="70" r="2" fill="currentColor"/><circle cx="30" cy="70" r="2" fill="currentColor"/><circle cx="50" cy="70" r="2" fill="currentColor"/><circle cx="70" cy="70" r="2" fill="currentColor"/><circle cx="90" cy="70" r="2" fill="currentColor"/><circle cx="10" cy="90" r="2" fill="currentColor"/><circle cx="30" cy="90" r="2" fill="currentColor"/><circle cx="50" cy="90" r="2" fill="currentColor"/><circle cx="70" cy="90" r="2" fill="currentColor"/><circle cx="90" cy="90" r="2" fill="currentColor"/></svg>` },
+      { name: 'ZigZag Largo', svg: `<svg viewBox="0 0 100 40"><path d="M0,20 L10,10 L20,20 L30,10 L40,20 L50,10 L60,20 L70,10 L80,20 L90,10 L100,20" fill="none" stroke="currentColor" stroke-width="4"/></svg>` },
+      { name: 'Círculos Wireframe', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/><circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5"/><circle cx="50" cy="50" r="20" fill="none" stroke="currentColor" stroke-width="1" opacity="0.8"/><circle cx="50" cy="50" r="10" fill="currentColor"/></svg>` },
     ]
   },
-  // ── Círculos / Circles ──
+  // ── Brush Premium (Melhorado) ──
   {
-    category: 'Círculos',
+    category: 'Brush & Pinceladas',
     items: [
-      { name: 'Círculo Sólido', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="currentColor"/></svg>` },
-      { name: 'Anel', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8"/></svg>` },
-      { name: 'Círculos Concêntricos', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="50" r="33" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="50" r="20" fill="currentColor"/></svg>` },
-      { name: 'Meia Lua', svg: `<svg viewBox="0 0 100 100"><path d="M50,10 A40,40 0 1,1 50,90 A25,25 0 1,0 50,10Z" fill="currentColor"/></svg>` },
+      { name: 'Pincelada Rústica', svg: `<svg viewBox="0 0 200 50"><path d="M5,25 Q40,5 80,20 T150,25 T195,20" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/><path d="M10,28 Q45,8 85,23 T155,28 T190,23" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.5"/><path d="M15,22 Q50,2 90,17 T160,22 T185,17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/></svg>` },
+      { name: 'Pincelada Larga Plana', svg: `<svg viewBox="0 0 200 40"><rect x="0" y="10" width="200" height="20" rx="2" fill="currentColor"/><path d="M0,15 L200,15" fill="none" stroke="white" stroke-width="1" opacity="0.2"/><path d="M0,25 L200,25" fill="none" stroke="black" stroke-width="1" opacity="0.1"/></svg>` },
+      { name: 'Brush Vertical', svg: `<svg viewBox="0 0 40 100"><path d="M20,5 Q35,40 20,70 T20,95" fill="none" stroke="currentColor" stroke-width="15" stroke-linecap="round"/><path d="M15,10 Q25,40 15,70 T15,90" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" opacity="0.4"/></svg>` },
     ]
   },
-  // ── Ondas / Waves ──
+  // ── Ícones de Interface (Novo) ──
   {
-    category: 'Ondas',
+    category: 'Ícones & UI',
     items: [
-      { name: 'Onda Suave', svg: `<svg viewBox="0 0 200 80"><path d="M0,40 C30,10 70,70 100,40 C130,10 170,70 200,40 L200,80 L0,80Z" fill="currentColor"/></svg>` },
-      { name: 'Onda Tripla', svg: `<svg viewBox="0 0 200 80"><path d="M0,50 C25,20 50,80 75,50 C100,20 125,80 150,50 C175,20 190,80 200,50" fill="none" stroke="currentColor" stroke-width="5"/></svg>` },
-      { name: 'Zig-Zag', svg: `<svg viewBox="0 0 200 60"><polyline points="0,30 25,5 50,30 75,5 100,30 125,5 150,30 175,5 200,30" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></svg>` },
-      { name: 'Espiral', svg: `<svg viewBox="0 0 100 100"><path d="M50,50 m0,-35 a35,35 0 1,1 -0.1,0 m0,10 a25,25 0 1,0 0.1,0 m0,-10 a15,15 0 1,1 -0.1,0" fill="none" stroke="currentColor" stroke-width="4"/></svg>` },
-    ]
-  },
-  // ── Geométricos / Shapes ──
-  {
-    category: 'Geométricos',
-    items: [
-      { name: 'Triângulo', svg: `<svg viewBox="0 0 100 100"><polygon points="50,5 95,90 5,90" fill="currentColor"/></svg>` },
-      { name: 'Triângulo Vazio', svg: `<svg viewBox="0 0 100 100"><polygon points="50,5 95,90 5,90" fill="none" stroke="currentColor" stroke-width="6"/></svg>` },
-      { name: 'Losango', svg: `<svg viewBox="0 0 100 100"><polygon points="50,5 95,50 50,95 5,50" fill="currentColor"/></svg>` },
-      { name: 'Hexágono', svg: `<svg viewBox="0 0 100 100"><polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" fill="currentColor"/></svg>` },
-      { name: 'Cruz', svg: `<svg viewBox="0 0 100 100"><rect x="38" y="5" width="24" height="90" rx="4" fill="currentColor"/><rect x="5" y="38" width="90" height="24" rx="4" fill="currentColor"/></svg>` },
-      { name: 'Seta', svg: `<svg viewBox="0 0 100 100"><polygon points="10,35 60,35 60,15 90,50 60,85 60,65 10,65" fill="currentColor"/></svg>` },
-    ]
-  },
-  // ── Rabiscos / Doodles ──
-  {
-    category: 'Rabiscos',
-    items: [
-      { name: 'Coração', svg: `<svg viewBox="0 0 100 100"><path d="M50,85 C50,85 10,60 10,35 C10,20 20,10 35,10 C42,10 48,13 50,17 C52,13 58,10 65,10 C80,10 90,20 90,35 C90,60 50,85 50,85Z" fill="currentColor"/></svg>` },
-      { name: 'Relâmpago', svg: `<svg viewBox="0 0 100 100"><polygon points="60,5 25,55 50,55 40,95 75,45 50,45" fill="currentColor"/></svg>` },
-      { name: 'Nuvem', svg: `<svg viewBox="0 0 120 80"><path d="M25,65 C10,65 5,55 5,47 C5,38 12,31 22,30 C22,17 32,8 45,8 C55,8 63,14 66,23 C70,20 75,18 80,18 C95,18 108,30 108,45 C108,58 98,65 85,65Z" fill="currentColor"/></svg>` },
-      { name: 'Infinito', svg: `<svg viewBox="0 0 150 60"><path d="M75,30 C75,30 60,5 35,5 C15,5 5,18 5,30 C5,42 15,55 35,55 C60,55 75,30 75,30 C75,30 90,5 115,5 C135,5 145,18 145,30 C145,42 135,55 115,55 C90,55 75,30 75,30Z" fill="none" stroke="currentColor" stroke-width="8"/></svg>` },
-      { name: 'Faixa Diagonal', svg: `<svg viewBox="0 0 100 100"><polygon points="0,0 30,0 100,70 100,100 70,100 0,30" fill="currentColor"/></svg>` },
+      { name: 'Pasta Arquivo', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` },
+      { name: 'Impressora', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>` },
+      { name: 'Lupa Pesquisa', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>` },
+      { name: 'Documento Texto', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>` },
     ]
   },
   // ── Floral Premium ──
@@ -82,16 +58,6 @@ export const decorativeElements = [
       { name: 'Ramo Elegante', svg: `<svg viewBox="0 0 100 100"><path d="M20,90 Q40,50 80,10" fill="none" stroke="currentColor" stroke-width="3"/><path d="M30,75 C20,65 20,55 35,55 C45,55 50,65 30,75 Z" fill="currentColor"/><path d="M45,55 C35,45 35,35 50,35 C60,35 65,45 45,55 Z" fill="currentColor"/><path d="M60,35 C50,25 50,15 65,15 C75,15 80,25 60,35 Z" fill="currentColor"/><path d="M45,80 C55,90 65,90 65,75 C65,65 55,60 45,80 Z" fill="currentColor"/><path d="M60,60 C70,70 80,70 80,55 C80,45 70,40 60,60 Z" fill="currentColor"/><path d="M75,40 C85,50 95,50 95,35 C95,25 85,20 75,40 Z" fill="currentColor"/></svg>` },
       { name: 'Lótus Abstrato', svg: `<svg viewBox="0 0 100 100"><path d="M50,85 C20,70 10,40 15,20 C30,30 45,45 50,60 C55,45 70,30 85,20 C90,40 80,70 50,85 Z" fill="currentColor"/><path d="M50,75 C30,60 25,35 30,15 C40,25 45,40 50,50 C55,40 60,25 70,15 C75,35 70,60 50,75 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50,85 C50,85 45,10 50,5 C55,10 50,85 50,85 Z" fill="currentColor"/></svg>` },
       { name: 'Flor Minimalista', svg: `<svg viewBox="0 0 100 100"><path d="M50,90 C45,60 40,30 50,10 C60,30 55,60 50,90 Z" fill="currentColor" opacity="0.4"/><path d="M50,90 C45,60 40,30 50,10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50,40 C30,30 10,40 10,60 C30,70 45,60 50,40 Z" fill="currentColor" opacity="0.4"/><path d="M50,40 C30,30 10,40 10,60 C30,70 45,60 50,40" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50,40 C70,30 90,40 90,60 C70,70 55,60 50,40 Z" fill="currentColor" opacity="0.4"/><path d="M50,40 C70,30 90,40 90,60 C70,70 55,60 50,40" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="50" cy="40" r="5" fill="currentColor"/></svg>` },
-    ]
-  },
-  // ── Brush & Pinceladas Premium ──
-  {
-    category: 'Brush Premium',
-    items: [
-      { name: 'Pincelada Textura', svg: `<svg viewBox="0 0 200 60"><path d="M10,30 Q50,10 100,25 T190,30 Q195,45 150,45 T20,45 Z" fill="currentColor"/><path d="M5,25 L15,35 L10,25 Z M195,25 L185,35 L190,25 Z M50,12 L60,8 L65,15 Z M140,43 L150,48 L155,42 Z" fill="currentColor"/><path d="M15,32 Q60,18 100,28 T180,32" fill="none" stroke="#fff" stroke-width="2" opacity="0.3"/><path d="M25,38 Q70,25 110,35 T170,38" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.2"/></svg>` },
-      { name: 'Aquarela / Wash', svg: `<svg viewBox="0 0 200 100"><path d="M20,50 Q50,20 100,30 T180,40 Q190,70 150,80 T30,70 Q10,60 20,50 Z" fill="currentColor" opacity="0.4"/><path d="M30,55 Q60,25 110,35 T170,45 Q180,65 140,75 T40,65 Q20,55 30,55 Z" fill="currentColor" opacity="0.6"/><path d="M40,60 Q70,30 120,40 T160,50 Q170,60 130,70 T50,60 Q30,50 40,60 Z" fill="currentColor" opacity="0.8"/></svg>` },
-      { name: 'Splatter', svg: `<svg viewBox="0 0 100 100"><path d="M50,20 C70,10 85,30 80,50 C95,60 70,90 50,80 C30,90 5,60 20,50 C15,30 30,10 50,20 Z" fill="currentColor"/><circle cx="20" cy="20" r="5" fill="currentColor"/><circle cx="85" cy="25" r="3" fill="currentColor"/><circle cx="80" cy="80" r="6" fill="currentColor"/><circle cx="15" cy="75" r="4" fill="currentColor"/><circle cx="10" cy="40" r="2" fill="currentColor"/><circle cx="90" cy="60" r="2" fill="currentColor"/></svg>` },
-      { name: 'Círculo Brush', svg: `<svg viewBox="0 0 100 100"><path d="M50,10 C75,10 90,25 90,50 C90,75 75,90 50,90 C25,90 10,75 10,50 C10,25 25,10 50,10" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="10 2 20 4 30 5 15 3 25"/><path d="M45,15 C65,12 85,25 85,45 C85,65 65,85 45,85 C25,85 15,65 15,45 C15,25 25,15 45,15" fill="none" stroke="currentColor" stroke-width="4" opacity="0.5"/></svg>` },
     ]
   },
 ];
