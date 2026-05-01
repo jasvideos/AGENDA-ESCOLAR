@@ -452,13 +452,11 @@ function App() {
         throw new Error("Segurança: Uma imagem está bloqueando a gravação. Tente usar o upload local ou Unsplash.");
       }
 
-      const types = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
-      const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-      
+      const mimeType = 'video/webm';
       const stream = canvas.captureStream(24); 
       const recorder = new MediaRecorder(stream, { 
         mimeType,
-        videoBitsPerSecond: 4_000_000 
+        videoBitsPerSecond: 2_500_000 
       });
       
       const chunks = [];
@@ -466,7 +464,7 @@ function App() {
       
       const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
-          if (chunks.length === 0) return reject(new Error('Erro: O vídeo gerado está vazio.'));
+          if (chunks.length === 0) return reject(new Error('Erro: O navegador não gerou dados de vídeo.'));
           const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           setRecordedVideoUrl(url);
@@ -474,7 +472,9 @@ function App() {
         };
       });
 
-      recorder.start(100);
+      const onStartPromise = new Promise(resolve => { recorder.onstart = resolve; });
+      recorder.start(500);
+      await onStartPromise;
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
@@ -484,9 +484,9 @@ function App() {
 
         while (Date.now() - startTime < slideDurationMs) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          ctx.fillStyle = 'rgba(0,0,0,0.001)';
+          ctx.fillStyle = i % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
           ctx.fillRect(0,0,1,1);
-          await sleep(60); 
+          await sleep(100); 
           if (!isRecording) break;
         }
       }
