@@ -153,8 +153,8 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     }
   };
 
-  // Converte qualquer src (URL ou dataURL) para base64 via canvas — evita CORS no fetch
-  const srcToBase64 = (src) => new Promise((resolve, reject) => {
+  // Converte qualquer src para Blob via canvas (evita CORS em URLs externas)
+  const srcToBlob = (src) => new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -162,68 +162,71 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
       canvas.getContext('2d').drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png').split(',')[1]);
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('Falha ao processar imagem via canvas.'));
+      }, 'image/png');
     };
-    img.onerror = () => reject(new Error('Não foi possível carregar a imagem. Tente fazer o upload local primeiro.'));
+    img.onerror = () => reject(new Error('Não foi possível carregar a imagem. Faça o upload local primeiro (📁 Upload Local).'));
     img.src = src;
   });
 
-  // 🤗 HF — Remover Fundo (briaai/RMBG-1.4) — Grátis e funciona do browser
+  // 🤗 HF — Remover Fundo (briaai/RMBG-1.4) — formato binário correto
   const handleHFRemoveBg = async () => {
     if (!element.src) return;
     const hfKey = localStorage.getItem('hf_api_key');
     if (!hfKey) {
-      alert('Configure sua Hugging Face API Key nas Configurações (⚙️). É grátis em huggingface.co/settings/tokens');
+      alert('Configure sua Hugging Face API Key nas Configurações (⚙️).\nGrátis em huggingface.co/settings/tokens');
       return;
     }
     setIsHFProcessing(true);
     try {
-      const base64 = await srcToBase64(element.src);
+      const blob = await srcToBlob(element.src);
       const response = await fetch(
         'https://api-inference.huggingface.co/models/briaai/RMBG-1.4',
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${hfKey}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'image/png',
             'X-Wait-For-Model': 'true',
           },
-          body: JSON.stringify({ inputs: base64 }),
+          body: blob,
         }
       );
       if (response.status === 503) {
-        alert('⏳ Modelo carregando no HF. Aguarde 20-40s e tente novamente.');
-        return;
+        alert('⏳ Modelo HF carregando. Aguarde 20-40s e tente novamente.'); return;
       }
       if (!response.ok) {
         const e = await response.json().catch(() => ({}));
-        throw new Error(e.error || `Erro ${response.status}`);
+        throw new Error(e.error || `Erro HTTP ${response.status}`);
       }
-      const blob = await response.blob();
+      const resultBlob = await response.blob();
       const reader = new FileReader();
       reader.onloadend = () => updateElement(element.id, { src: reader.result });
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(resultBlob);
     } catch (err) {
-      console.error('HF RMBG error:', err);
-      alert(`Falha (HF Fundo): ${err.message}`);
+      console.error('HF RMBG:', err);
+      alert(`🤗 Apagar Fundo (HF): ${err.message}`);
     } finally {
       setIsHFProcessing(false);
     }
   };
 
-  // 🤗 HF — Remover Texto via inpainting (experimental)
+  // 🤗 HF — Remoção de texto via Stable Diffusion img2img (sem máscara)
   const handleHFRemoveText = async () => {
     if (!element.src) return;
     const hfKey = localStorage.getItem('hf_api_key');
     if (!hfKey) {
-      alert('Configure sua Hugging Face API Key nas Configurações (⚙️). É grátis em huggingface.co/settings/tokens');
+      alert('Configure sua Hugging Face API Key nas Configurações (⚙️).\nGrátis em huggingface.co/settings/tokens');
       return;
     }
     setIsHFProcessing(true);
     try {
-      const base64 = await srcToBase64(element.src);
+      const blob = await srcToBlob(element.src);
+      // img2img com prompt negativo para texto — não requer máscara
       const response = await fetch(
-        'https://api-inference.huggingface.co/models/Uminosachi/realisticVisionV51_v51VAE-inpainting',
+        'https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5-img2img',
         {
           method: 'POST',
           headers: {
@@ -232,30 +235,34 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
             'X-Wait-For-Model': 'true',
           },
           body: JSON.stringify({
-            inputs: base64,
+            inputs: await new Promise(res => {
+              const r = new FileReader();
+              r.onloadend = () => res(r.result.split(',')[1]);
+              r.readAsDataURL(blob);
+            }),
             parameters: {
-              prompt: 'clean background, no text, no watermark, photorealistic',
-              negative_prompt: 'text, watermark, words, letters, numbers',
+              prompt: 'clean photo, no text, no watermark, natural background',
+              negative_prompt: 'text, watermark, letters, words, numbers, labels',
+              strength: 0.35,
               num_inference_steps: 25,
             }
           }),
         }
       );
       if (response.status === 503) {
-        alert('⏳ Modelo carregando no HF. Aguarde 30-60s e tente novamente.');
-        return;
+        alert('⏳ Modelo HF carregando. Aguarde 30-60s e tente novamente.'); return;
       }
       if (!response.ok) {
         const e = await response.json().catch(() => ({}));
-        throw new Error(e.error || `Erro ${response.status}`);
+        throw new Error(e.error || `Erro HTTP ${response.status}`);
       }
-      const blob = await response.blob();
+      const resultBlob = await response.blob();
       const reader = new FileReader();
       reader.onloadend = () => updateElement(element.id, { src: reader.result });
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(resultBlob);
     } catch (err) {
-      console.error('HF text removal error:', err);
-      alert(`Falha (HF Texto): ${err.message}`);
+      console.error('HF text removal:', err);
+      alert(`🤗 Remover Texto (HF): ${err.message}`);
     } finally {
       setIsHFProcessing(false);
     }
