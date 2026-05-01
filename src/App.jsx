@@ -501,14 +501,12 @@ function App() {
       await sleep(500); // Aguarda o recorder estabilizar
 
       const FPS = 30;
-      console.log('Iniciando gravação de', slides.length, 'slides');
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
         const duration = slide.duration || DEFAULT_DURATION;
         const totalFrames = Math.max(1, duration * FPS);
         
-        console.log(`Gravando slide ${i+1}: ${slide.name} por ${duration}s (${totalFrames} frames)`);
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: `Renderizando ${slide.name}...` });
 
         const offscreen = document.createElement('canvas');
@@ -516,32 +514,29 @@ function App() {
         const offCtx = offscreen.getContext('2d');
         await renderSlideToCanvas(offCtx, slide, scaleX, scaleY);
 
-        // Verificação de conteúdo
-        const testData = offscreen.toDataURL();
-        console.log(`Slide ${i+1} renderizado. Tamanho do dado: ${testData.length}`);
-
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
 
         for (let f = 0; f < totalFrames; f++) {
           ctx.clearRect(0, 0, VIDEO_W, VIDEO_H);
           ctx.drawImage(offscreen, 0, 0);
           
-          // Heartbeat visível (um pequeno ponto que muda de cor)
-          ctx.fillStyle = f % 2 === 0 ? 'rgba(255,0,0,0.01)' : 'rgba(0,255,0,0.01)';
-          ctx.fillRect(0,0,2,2);
+          // Batimento imperceptível para manter encoder ativo
+          ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
+          ctx.fillRect(0,0,1,1);
           
           await sleep(1000 / FPS);
+          if (!isRecording) break;
         }
+        if (!isRecording) break;
       }
 
-      console.log('Gravação finalizada no motor. Parando recorder...');
       recorder.stop();
       await onStopPromise;
       
       setIsRecording(false);
       setRecordingProgress({ current: 0, total: 0, slideName: '' });
     } catch (err) {
-      console.error('ERRO CRÍTICO NA GRAVAÇÃO:', err);
+      console.error('Erro na gravação:', err);
       alert(err.message || 'Erro ao gerar vídeo.');
       setIsRecording(false);
       setRecordingProgress({ current: 0, total: 0, slideName: '' });
@@ -552,17 +547,20 @@ function App() {
   useEffect(() => {
     if (!isPresenting || !isLooping || slides.length <= 1) return;
     
-    const currentSlide = slides.find(s => s.id === activeSlideId);
-    const duration = (currentSlide?.duration || DEFAULT_DURATION) * 1000;
+    const currentSlide = slides.find(s => s.id === activeSlideId) || slides[0];
+    const duration = (currentSlide.duration || DEFAULT_DURATION) * 1000;
     
+    console.log(`Presentation Loop: Slide ${activeSlideId}, Duration: ${duration}ms`);
+
     const timer = setTimeout(() => {
       const currentIndex = slides.findIndex(s => s.id === activeSlideId);
       const nextIndex = (currentIndex + 1) % slides.length;
+      console.log(`Transitioning: ${currentIndex} -> ${nextIndex}`);
       setActiveSlideId(slides[nextIndex].id);
     }, duration);
     
     return () => clearTimeout(timer);
-  }, [isPresenting, isLooping, activeSlideId, slides.length]);
+  }, [isPresenting, isLooping, activeSlideId, slides]);
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
