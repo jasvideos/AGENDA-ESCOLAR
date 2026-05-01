@@ -53,6 +53,7 @@ function App() {
   const [presentationScale, setPresentationScale] = useState(1);
   const [copiedElement, setCopiedElement] = useState(null);
   const activeSlideIdRef = useRef(activeSlideId);
+  const assetCache = useRef(new Map()); // Global cache for images and SVGs
 
   // Derivadas e Refs para evitar TDZ
   const activeSlide = slides.find(s => s.id === activeSlideId) || slides[0];
@@ -269,9 +270,14 @@ function App() {
 
   const loadImage = (src) => new Promise((resolve) => {
     if (!src) return resolve(null);
+    if (assetCache.current.has(src)) return resolve(assetCache.current.get(src));
+
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      assetCache.current.set(src, img);
+      resolve(img);
+    };
     img.onerror = () => resolve(null);
     img.src = src;
   });
@@ -402,13 +408,23 @@ function App() {
         } catch {}
       } else if (el.type === 'svg') {
         try {
-          const svgString = (el.content || '').replace(/currentColor/g, el.style?.color || '#ffffff');
-          const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
-          const svgImg = await loadImage(url);
+          const color = el.style?.color || '#ffffff';
+          const cacheKey = `svg-${el.id}-${color}`;
+          let svgImg = assetCache.current.get(cacheKey);
+
+          if (!svgImg) {
+            const svgString = (el.content || '').replace(/currentColor/g, color);
+            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            svgImg = await loadImage(url);
+            if (svgImg) assetCache.current.set(cacheKey, svgImg);
+            // URL.revokeObjectURL(url); // Don't revoke if we cache the img object
+          }
+
           if (svgImg) ctx.drawImage(svgImg, x, y, w, h);
-          URL.revokeObjectURL(url);
-        } catch {}
+        } catch (err) {
+          console.error("SVG Render Error:", err);
+        }
       }
       ctx.restore();
     }
@@ -424,27 +440,37 @@ function App() {
       const scaleX = VIDEO_W / SLIDE_W;
       const scaleY = VIDEO_H / SLIDE_H;
 
-      // 1. Pré-carregamento de todos os assets para garantir fluidez
-      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Otimizando ativos...' });
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Preparando ativos...' });
+      
+      // Pré-carrega tudo para garantir que nada falhe por rede
       for (const slide of slides) {
         if (slide.bgImage) await loadImage(slide.bgImage);
         for (const el of slide.elements) {
           if (el.type === 'image' && el.src) await loadImage(el.src);
+          // SVGs são pré-carregados no renderSlideToCanvas mas aqui garantimos a primeira carga
+          if (el.type === 'svg') await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
         }
       }
 
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-      const stream = canvas.captureStream(30);
-      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 12_000_000 });
+      const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+      const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+      
+      const stream = canvas.captureStream(24); // 24 FPS para balanço entre qualidade e performance
+      const recorder = new MediaRecorder(stream, { 
+        mimeType, 
+        videoBitsPerSecond: 8_000_000 // 8 Mbps para Full HD estável
+      });
+      
       const chunks = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onerror = (e) => console.error('Recorder Error:', e);
       
       const onStopPromise = new Promise(resolve => {
         recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
+          const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url; a.download = `anixslide-fullhd-${Date.now()}.webm`; a.click();
+          a.href = url; a.download = `anixslide-${Date.now()}.webm`; a.click();
           URL.revokeObjectURL(url);
           resolve();
         };
@@ -452,7 +478,6 @@ function App() {
 
       recorder.start(100);
 
-      // 2. Loop de renderização contínua por slide
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
         const slideDurationMs = (slide.duration || DEFAULT_DURATION) * 1000;
@@ -460,21 +485,20 @@ function App() {
         
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
 
-        // Renderiza repetidamente durante a duração do slide para manter o stream ativo
         while (Date.now() - startTime < slideDurationMs) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          await sleep(200); // Frequência de atualização durante a gravação
-          if (!isRecording) break; // Interrompe se cancelado
+          await sleep(60); // ~16 FPS rendering durante a gravação
+          if (!isRecording) break;
         }
       }
 
       recorder.stop();
-      await onStopPromise; // Aguarda o processamento final do MediaRecorder
+      await onStopPromise;
       
       setIsRecording(false);
       setRecordingProgress({ current: 0, total: 0, slideName: '' });
     } catch (err) {
-      console.error('Erro ao gravar vídeo:', err);
+      console.error('Erro na gravação:', err);
       setIsRecording(false);
       setRecordingProgress({ current: 0, total: 0, slideName: '' });
     }
