@@ -6,6 +6,7 @@ import { bgGallery } from '../templates';
 const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, activeSlide, updateSlide }) => {
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isGeneratingText, setIsGeneratingText] = useState(false);
+  const [isClipdropProcessing, setIsClipdropProcessing] = useState(false);
 
   if (!element) {
     return (
@@ -99,6 +100,55 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       alert(`Falha na remoção de fundo: ${err.message}`);
     } finally {
       setIsRemovingBg(false);
+    }
+  };
+
+  const handleClipdropTool = async (tool) => {
+    if (!element.src) return;
+    const apiKey = localStorage.getItem('clipdrop_api_key');
+    if (!apiKey) {
+      alert('Configure sua Clipdrop API Key nas Configurações do painel esquerdo (⚙️).');
+      return;
+    }
+    setIsClipdropProcessing(true);
+    try {
+      let imageBlob;
+      if (element.src.startsWith('data:')) {
+        const res = await fetch(element.src);
+        imageBlob = await res.blob();
+      } else {
+        const res = await fetch(element.src);
+        imageBlob = await res.blob();
+      }
+
+      const formData = new FormData();
+      formData.append('image_file', imageBlob, 'image.png');
+
+      const endpoints = {
+        'remove-text': 'https://clipdrop-api.co/remove-text/v1',
+        'upscale':     'https://clipdrop-api.co/image-upscaling/v1/upscale',
+      };
+
+      const response = await fetch(endpoints[tool], {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Erro ${response.status}: ${errText || 'Chave inválida ou limite atingido.'}`);
+      }
+
+      const resultBlob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => updateElement(element.id, { src: reader.result });
+      reader.readAsDataURL(resultBlob);
+    } catch (err) {
+      console.error('Clipdrop error:', err);
+      alert(`Falha na operação Clipdrop: ${err.message}`);
+    } finally {
+      setIsClipdropProcessing(false);
     }
   };
 
@@ -324,8 +374,14 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
             </div>
             <div className="prop-group">
               <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Ferramentas Mágicas (IA)</label>
-              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #6366f1, #8b5cf6)', color: 'white', border: 'none', opacity: isRemovingBg ? 0.7 : 1, cursor: isRemovingBg ? 'not-allowed' : 'pointer' }} onClick={handleRemoveBackground} disabled={isRemovingBg}>
-                {isRemovingBg ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando IA...</>) : (<><Wand2 size={16} style={{ marginRight: '8px' }} /> Apagar Fundo da Foto</>)}
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #6366f1, #8b5cf6)', color: 'white', border: 'none', opacity: isRemovingBg ? 0.7 : 1, cursor: isRemovingBg ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleRemoveBackground} disabled={isRemovingBg}>
+                {isRemovingBg ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando...</>) : (<><Wand2 size={16} style={{ marginRight: '8px' }} /> Apagar Fundo da Foto</>)}
+              </button>
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #0ea5e9, #0284c7)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={() => handleClipdropTool('remove-text')} disabled={isClipdropProcessing}>
+                {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando Clipdrop...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Remover Texto da Imagem</>)}
+              </button>
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f59e0b, #d97706)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer' }} onClick={() => handleClipdropTool('upscale')} disabled={isClipdropProcessing}>
+                {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Melhorar Qualidade (Upscale)</>)}
               </button>
               <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { 100% { transform: rotate(360deg); } }` }} />
             </div>
