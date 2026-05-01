@@ -455,15 +455,14 @@ function App() {
 
       setRecordingProgress({ current: 0, total: slides.length, slideName: 'Iniciando motor gráfico...' });
       
-      // Adiciona o canvas ao DOM (oculto) para garantir que o motor de renderização do navegador esteja ativo
       canvas.style.position = 'fixed';
       canvas.style.top = '-10000px';
       canvas.style.left = '-10000px';
       canvas.style.pointerEvents = 'none';
       document.body.appendChild(canvas);
 
-      // Warm-up: Renderiza frames iniciais para "acordar" o stream
-      for (let i = 0; i < 5; i++) {
+      // Warm-up
+      for (let i = 0; i < 3; i++) {
         await renderSlideToCanvas(ctx, slides[0], scaleX, scaleY);
         await sleep(50);
       }
@@ -472,13 +471,13 @@ function App() {
         canvas.toDataURL(); 
       } catch (e) {
         document.body.removeChild(canvas);
-        throw new Error("Segurança: Uma imagem está bloqueando a gravação. Tente usar o upload local ou Unsplash.");
+        throw new Error("Segurança: Uma imagem está bloqueando a gravação. Remova as imagens recentes.");
       }
 
       const types = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
       const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
       
-      const stream = canvas.captureStream(30); // 30 FPS fixo
+      const stream = canvas.captureStream(30); 
       const recorder = new MediaRecorder(stream, { 
         mimeType,
         videoBitsPerSecond: 5_000_000 
@@ -490,7 +489,7 @@ function App() {
       const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
           document.body.removeChild(canvas);
-          if (chunks.length === 0) return reject(new Error('Erro: O navegador não gerou dados de vídeo. Tente reiniciar o navegador ou usar o Chrome/Edge.'));
+          if (chunks.length === 0) return reject(new Error('Erro: O navegador não gerou dados de vídeo.'));
           const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           setRecordedVideoUrl(url);
@@ -498,29 +497,56 @@ function App() {
         };
       });
 
-      const onStartPromise = new Promise(resolve => { 
-        const t = setTimeout(() => resolve(), 2000);
-        recorder.onstart = () => { clearTimeout(t); resolve(); }; 
-      });
-      
       recorder.start();
-      await onStartPromise;
+      await sleep(500); // Aguarda o recorder estabilizar
 
+      const FPS = 30;
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
-        const slideDurationMs = (slide.duration || DEFAULT_DURATION) * 1000;
-        const startTime = Date.now();
+        const duration = slide.duration || DEFAULT_DURATION;
+        const totalFrames = duration * FPS;
+        
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
 
-        while (Date.now() - startTime < slideDurationMs) {
+        for (let f = 0; f < totalFrames; f++) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          // Pequena variação para garantir novos frames no encoder
-          ctx.fillStyle = Date.now() % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
+          // Pequena variação para manter o encoder ativo
+          ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
           ctx.fillRect(0,0,1,1);
-          await sleep(33); // ~30 FPS para gravação fluida
+          await sleep(1000 / FPS);
           if (!isRecording) break;
         }
+        if (!isRecording) break;
       }
+
+      recorder.stop();
+      await onStopPromise;
+      
+      setIsRecording(false);
+      setRecordingProgress({ current: 0, total: 0, slideName: '' });
+    } catch (err) {
+      console.error('Erro na gravação:', err);
+      alert(err.message || 'Erro ao gerar vídeo.');
+      setIsRecording(false);
+      setRecordingProgress({ current: 0, total: 0, slideName: '' });
+    }
+  };
+
+  // Loop de apresentação mais robusto
+  useEffect(() => {
+    if (!isPresenting || !isLooping || slides.length <= 1) return;
+    
+    const currentSlide = slides.find(s => s.id === activeSlideId);
+    const duration = (currentSlide?.duration || DEFAULT_DURATION) * 1000;
+    
+    const timer = setTimeout(() => {
+      const currentIndex = slides.findIndex(s => s.id === activeSlideId);
+      const nextIndex = (currentIndex + 1) % slides.length;
+      setActiveSlideId(slides[nextIndex].id);
+    }, duration);
+    
+    return () => clearTimeout(timer);
+  }, [isPresenting, isLooping, activeSlideId, slides.length]); // Removi o slides completo para evitar loops infinitos
 
       recorder.stop();
       await onStopPromise;
