@@ -6,6 +6,7 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+  const [bgRemoveKey, setBgRemoveKey] = useState(localStorage.getItem('bg_remove_api_key') || '');
   const exportProject = () => {
     const data = JSON.stringify(slides);
     const blob = new Blob([data], { type: 'application/json' });
@@ -151,10 +152,21 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
               setApiKey(e.target.value);
               localStorage.setItem('gemini_api_key', e.target.value);
             }}
-            placeholder="Cole sua API Key aqui..."
+            placeholder="Cole sua Gemini API Key aqui..."
+            style={{ width: '100%', marginBottom: '10px', fontSize: '0.8rem' }}
+          />
+          <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Remove.bg API Key (Remover Fundo)</label>
+          <input 
+            type="password" 
+            value={bgRemoveKey}
+            onChange={(e) => {
+              setBgRemoveKey(e.target.value);
+              localStorage.setItem('bg_remove_api_key', e.target.value);
+            }}
+            placeholder="Cole sua Remove.bg API Key aqui..."
             style={{ width: '100%', marginBottom: '5px', fontSize: '0.8rem' }}
           />
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Sua chave é salva apenas neste navegador.</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Obtenha sua chave grátis em <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>remove.bg/api</a> (50 imagens/mês grátis)</span>
         </div>
       )}
     </aside>

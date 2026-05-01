@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Settings, Trash2, Type, Image as ImageIcon, Palette, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine, Wand2, Loader2, Sparkles, RotateCw } from 'lucide-react';
-import { removeBackground } from '@imgly/background-removal';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { bgGallery } from '../templates';
 
@@ -53,40 +52,51 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     );
   }
 
-  // ── FIX 2: Convert dataURL to Blob before calling removeBackground ──
-  const dataUrlToBlob = (dataUrl) => {
-    const [header, base64] = dataUrl.split(',');
-    const mime = header.match(/:(.*?);/)[1];
-    const binary = atob(base64);
-    const arr = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
-    return new Blob([arr], { type: mime });
-  };
-
   const handleRemoveBackground = async () => {
     if (!element.src) return;
+    
+    const apiKey = localStorage.getItem('bg_remove_api_key');
+    if (!apiKey) {
+      alert('Configure sua Remove.bg API Key nas Configurações do painel esquerdo (botão ⚙️ Configurações).');
+      return;
+    }
+
     setIsRemovingBg(true);
     try {
-      let input = element.src;
-      // If it's a URL, try to fetch it as a blob first to handle CORS/format issues
-      if (typeof input === 'string' && input.startsWith('http')) {
-        const response = await fetch(input);
-        input = await response.blob();
-      } else if (typeof input === 'string' && input.startsWith('data:')) {
-        input = dataUrlToBlob(input);
+      // Converte a imagem para Blob se for dataURL
+      let imageBlob;
+      if (element.src.startsWith('data:')) {
+        const res = await fetch(element.src);
+        imageBlob = await res.blob();
+      } else {
+        // URL remota: faz o fetch via proxy (CORS)
+        const res = await fetch(element.src);
+        imageBlob = await res.blob();
       }
-      
-      const config = {
-        publicPath: 'https://unpkg.com/@imgly/background-removal@1.7.0/dist/',
-        debug: false,
-      };
-      const blob = await removeBackground(input, config);
+
+      const formData = new FormData();
+      formData.append('image_file', imageBlob, 'image.png');
+      formData.append('size', 'auto');
+
+      const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+        method: 'POST',
+        headers: { 'X-Api-Key': apiKey },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.title || `Erro ${response.status}: Chave inválida ou limite atingido.`);
+      }
+
+      const resultBlob = await response.blob();
       const reader = new FileReader();
       reader.onloadend = () => updateElement(element.id, { src: reader.result });
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(resultBlob);
+
     } catch (err) {
       console.error('Erro ao remover fundo:', err);
-      alert('Não foi possível remover o fundo automaticamente. Dica: Tente baixar a imagem e fazer o upload local para melhores resultados.');
+      alert(`Falha na remoção de fundo: ${err.message}`);
     } finally {
       setIsRemovingBg(false);
     }
