@@ -440,12 +440,17 @@ function App() {
       const scaleX = VIDEO_W / SLIDE_W;
       const scaleY = VIDEO_H / SLIDE_H;
 
-      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Preparando motor...' });
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Verificando segurança...' });
       
-      // Warm-up render para ativar o canvas antes da captura
-      await renderSlideToCanvas(ctx, slides[0] || initialSlides[0], scaleX, scaleY);
-      
-      // Pré-carregamento total
+      // Teste de segurança (CORS)
+      await renderSlideToCanvas(ctx, slides[0], scaleX, scaleY);
+      try {
+        canvas.toDataURL(); // Se falhar aqui, o canvas está sujo (tainted)
+      } catch (e) {
+        throw new Error("Segurança do Navegador: Uma imagem ou fundo está bloqueando a gravação (CORS). Tente usar imagens de outra fonte ou remova a imagem atual.");
+      }
+
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Preparando ativos...' });
       for (const slide of slides) {
         if (slide.bgImage) await loadImage(slide.bgImage);
         for (const el of slide.elements) {
@@ -454,35 +459,21 @@ function App() {
         }
       }
 
-      const types = ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'];
+      const types = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
       const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
       
-      // Captura sem FPS fixo para permitir que o navegador gerencie os frames sob demanda
-      const stream = canvas.captureStream(); 
+      const stream = canvas.captureStream(30); 
       const recorder = new MediaRecorder(stream, { 
         mimeType,
-        videoBitsPerSecond: 5_000_000 // Reduzido para 5Mbps para maior estabilidade
+        videoBitsPerSecond: 6_000_000 
       });
       
       const chunks = [];
-      recorder.ondataavailable = (e) => { 
-        if (e.data.size > 0) {
-          chunks.push(e.data);
-          console.log(`Chunk recebido: ${e.data.size} bytes`);
-        }
-      };
-      
-      recorder.onerror = (e) => {
-        console.error('Erro no MediaRecorder:', e);
-        alert('Erro na gravação: O navegador interrompeu o processo.');
-      };
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       
       const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
-          if (chunks.length === 0) {
-            reject(new Error('Nenhum dado de vídeo foi capturado (0KB). Verifique se há imagens bloqueadas por CORS.'));
-            return;
-          }
+          if (chunks.length === 0) return reject(new Error('Falha na captura: O navegador não gerou dados de vídeo.'));
           const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -492,22 +483,20 @@ function App() {
         };
       });
 
-      recorder.start(200); // Emite dados a cada 200ms
+      recorder.start();
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
         const slideDurationMs = (slide.duration || DEFAULT_DURATION) * 1000;
         const startTime = Date.now();
-        
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
 
         while (Date.now() - startTime < slideDurationMs) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          // Pequena animação interna ou mudança forçada para garantir emissão de frames
-          ctx.fillStyle = 'rgba(0,0,0,0.01)';
+          // Heartbeat para garantir frames
+          ctx.fillStyle = 'rgba(255,255,255,0.001)';
           ctx.fillRect(0,0,1,1);
-          
-          await sleep(50); // ~20 FPS render
+          await sleep(50);
           if (!isRecording) break;
         }
       }
@@ -534,7 +523,7 @@ function App() {
         />
       )}
       
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
         {!isPresenting && (
           <header className="glass" style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', zIndex: 10 }}>
             <div style={{ display: 'flex', gap: '15px' }}>
@@ -600,7 +589,6 @@ function App() {
             top: 0, left: 0,
             width: isPresenting ? '100vw' : '100%',
             height: isPresenting ? '100vh' : '100%',
-            flex: isPresenting ? 'none' : 1, 
             background: '#020617', 
             display: 'flex', justifyContent: 'center', alignItems: 'center',
             zIndex: isPresenting ? 1000 : 1,
@@ -612,9 +600,14 @@ function App() {
           )}
           <div style={{
             width: '960px', height: '540px',
+            flexShrink: 0,
             transform: isPresenting ? `scale(${presentationScale})` : 'none',
             transformOrigin: 'center center',
-            transition: 'transform 0.3s'
+            transition: 'transform 0.3s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative'
           }}>
             <SlideCanvas slide={activeSlide} selectedElementId={selectedElementId} setSelectedElementId={setSelectedElementId} updateElement={updateElement} readOnly={isPresenting} deleteElement={deleteElement} />
           </div>

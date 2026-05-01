@@ -63,33 +63,33 @@ export const decorativeElements = [
 ];
 
 export const slideTemplates = [
-  {
-    name: "Aviso Importante",
-    bgColor: "#ef4444",
-    bgImage: null,
-    elements: [
-      { id: uuidv4(), type: 'text', content: 'AVISO IMPORTANTE', x: 0, y: 100, w: 1000, h: 100, style: { fontSize: '64px', fontWeight: 'bold', color: '#ffffff', textAlign: 'center', animation: 'slideInUp' } },
-      { id: uuidv4(), type: 'text', content: 'Não haverá aula nesta sexta-feira devido ao feriado nacional.', x: 0, y: 300, w: 1000, h: 100, style: { fontSize: '40px', color: '#ffffff', textAlign: 'center', animation: 'fadeIn' } }
-    ]
-  },
-  {
-    name: "Apresentação Título",
-    bgColor: "#111827",
-    bgImage: bgGallery[0],
-    bgOpacity: 0.8,
-    elements: [
-      { id: uuidv4(), type: 'text', content: 'TÍTULO DA APRESENTAÇÃO', x: 0, y: 250, w: 1000, h: 100, style: { fontSize: '72px', fontWeight: 'bold', color: '#ffffff', textAlign: 'center', animation: 'zoomIn' } },
-      { id: uuidv4(), type: 'text', content: 'Subtítulo incrível aqui para chamar a atenção', x: 0, y: 360, w: 1000, h: 50, style: { fontSize: '30px', color: '#a78bfa', textAlign: 'center', animation: 'fadeIn' } }
-    ]
-  },
-  {
-    name: "Frase do Dia",
-    bgColor: "#000000",
-    bgImage: bgGallery[4],
-    bgOpacity: 0.5,
-    elements: [
-      { id: uuidv4(), type: 'text', content: '"A educação é a arma mais poderosa que você pode usar para mudar o mundo."', x: 100, y: 200, w: 800, h: 200, style: { fontSize: '48px', fontFamily: 'Playfair Display', color: '#ffffff', textAlign: 'center', animation: 'fadeIn' } },
-      { id: uuidv4(), type: 'text', content: '- Nelson Mandela', x: 100, y: 450, w: 800, h: 50, style: { fontSize: '24px', color: '#9ca3af', textAlign: 'center', animation: 'slideInUp' } }
-    ]
-  }
+      {
+        name: "Aviso Importante",
+        bgColor: "#ef4444",
+        bgImage: null,
+        elements: [
+          { id: uuidv4(), type: 'text', content: 'AVISO IMPORTANTE', x: 30, y: 80, w: 900, h: 120, style: { fontSize: '72px', fontWeight: 'bold', color: '#ffffff', textAlign: 'center', animation: 'slideInUp' } },
+          { id: uuidv4(), type: 'text', content: 'Não haverá aula nesta sexta-feira devido ao feriado nacional.', x: 80, y: 280, w: 800, h: 150, style: { fontSize: '40px', color: '#ffffff', textAlign: 'center', animation: 'fadeIn' } }
+        ]
+      },
+      {
+        name: "Apresentação Título",
+        bgColor: "#111827",
+        bgImage: bgGallery[0],
+        bgOpacity: 0.8,
+        elements: [
+          { id: uuidv4(), type: 'text', content: 'TÍTULO DA APRESENTAÇÃO', x: 80, y: 200, w: 800, h: 120, style: { fontSize: '72px', fontWeight: 'bold', color: '#ffffff', textAlign: 'center', animation: 'zoomIn' } },
+          { id: uuidv4(), type: 'text', content: 'Subtítulo incrível aqui para chamar a atenção', x: 80, y: 340, w: 800, h: 60, style: { fontSize: '30px', color: '#a78bfa', textAlign: 'center', animation: 'fadeIn' } }
+        ]
+      },
+      {
+        name: "Frase do Dia",
+        bgColor: "#000000",
+        bgImage: bgGallery[4],
+        bgOpacity: 0.5,
+        elements: [
+          { id: uuidv4(), type: 'text', content: '"A educação é a arma mais poderosa que você pode usar para mudar o mundo."', x: 80, y: 150, w: 800, h: 200, style: { fontSize: '48px', fontFamily: 'Playfair Display', color: '#ffffff', textAlign: 'center', animation: 'fadeIn' } },
+          { id: uuidv4(), type: 'text', content: '- Nelson Mandela', x: 80, y: 400, w: 800, h: 60, style: { fontSize: '24px', color: '#9ca3af', textAlign: 'center', animation: 'slideInUp' } }
+        ]
+      }
 ];
