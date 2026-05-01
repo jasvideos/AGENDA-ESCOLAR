@@ -503,16 +503,30 @@ function App() {
       const FPS = 30;
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
+        
+        setRecordingProgress({ current: i + 1, total: slides.length, slideName: `Renderizando ${slide.name}...` });
+
+        // 1. Pré-renderiza o slide inteiro em um canvas auxiliar (Offscreen)
+        // Isso evita processar SVGs e imagens centenas de vezes por segundo
+        const offscreen = document.createElement('canvas');
+        offscreen.width = VIDEO_W; offscreen.height = VIDEO_H;
+        const offCtx = offscreen.getContext('2d');
+        await renderSlideToCanvas(offCtx, slide, scaleX, scaleY);
+
         const duration = slide.duration || DEFAULT_DURATION;
         const totalFrames = duration * FPS;
         
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
 
         for (let f = 0; f < totalFrames; f++) {
-          await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          // Pequena variação para manter o encoder ativo
+          // Copia o slide pré-renderizado (Operação ultra rápida de GPU)
+          ctx.clearRect(0, 0, VIDEO_W, VIDEO_H);
+          ctx.drawImage(offscreen, 0, 0);
+          
+          // Batimento de frame
           ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
           ctx.fillRect(0,0,1,1);
+          
           await sleep(1000 / FPS);
           if (!isRecording) break;
         }
