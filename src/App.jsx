@@ -11,8 +11,8 @@ const STORAGE_KEY = 'anix_slides_data';
 
 const SLIDE_W = 960;
 const SLIDE_H = 540;
-const VIDEO_W = 1920;
-const VIDEO_H = 1080;
+const VIDEO_W = 1280;
+const VIDEO_H = 720;
 const DEFAULT_DURATION = 5;
 
 const initialSlides = [
@@ -443,36 +443,22 @@ function App() {
       const scaleX = VIDEO_W / SLIDE_W;
       const scaleY = VIDEO_H / SLIDE_H;
 
-      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Verificando segurança...' });
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Iniciando motor gráfico...' });
       
       await renderSlideToCanvas(ctx, slides[0], scaleX, scaleY);
       try {
-        canvas.toDataURL();
+        canvas.toDataURL(); 
       } catch (e) {
-        throw new Error("Segurança do Navegador: Uma imagem ou fundo está bloqueando a gravação (CORS). Tente usar imagens de outra fonte ou remova a imagem atual.");
+        throw new Error("Segurança: Uma imagem está bloqueando a gravação. Tente usar o upload local ou Unsplash.");
       }
 
-      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Preparando ativos...' });
-      for (const slide of slides) {
-        if (slide.bgImage) await loadImage(slide.bgImage);
-        for (const el of slide.elements) {
-          if (el.type === 'image' && el.src) await loadImage(el.src);
-          if (el.type === 'svg') await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-        }
-      }
-
-      const types = [
-        'video/webm;codecs=h264',
-        'video/webm;codecs=vp8',
-        'video/webm;codecs=vp9',
-        'video/webm'
-      ];
+      const types = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
       const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
       
-      const stream = canvas.captureStream(30); 
+      const stream = canvas.captureStream(24); 
       const recorder = new MediaRecorder(stream, { 
         mimeType,
-        videoBitsPerSecond: 6_000_000 
+        videoBitsPerSecond: 4_000_000 
       });
       
       const chunks = [];
@@ -480,7 +466,7 @@ function App() {
       
       const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
-          if (chunks.length === 0) return reject(new Error('Falha na captura: O navegador não gerou dados de vídeo.'));
+          if (chunks.length === 0) return reject(new Error('Erro: O vídeo gerado está vazio.'));
           const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           setRecordedVideoUrl(url);
@@ -488,7 +474,7 @@ function App() {
         };
       });
 
-      recorder.start();
+      recorder.start(100);
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
@@ -498,9 +484,9 @@ function App() {
 
         while (Date.now() - startTime < slideDurationMs) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          ctx.fillStyle = 'rgba(255,255,255,0.001)';
+          ctx.fillStyle = 'rgba(0,0,0,0.001)';
           ctx.fillRect(0,0,1,1);
-          await sleep(50);
+          await sleep(60); 
           if (!isRecording) break;
         }
       }
