@@ -455,18 +455,33 @@ function App() {
 
       setRecordingProgress({ current: 0, total: slides.length, slideName: 'Iniciando motor gráfico...' });
       
-      await renderSlideToCanvas(ctx, slides[0], scaleX, scaleY);
+      // Adiciona o canvas ao DOM (oculto) para garantir que o motor de renderização do navegador esteja ativo
+      canvas.style.position = 'fixed';
+      canvas.style.top = '-10000px';
+      canvas.style.left = '-10000px';
+      canvas.style.pointerEvents = 'none';
+      document.body.appendChild(canvas);
+
+      // Warm-up: Renderiza frames iniciais para "acordar" o stream
+      for (let i = 0; i < 5; i++) {
+        await renderSlideToCanvas(ctx, slides[0], scaleX, scaleY);
+        await sleep(50);
+      }
+
       try {
         canvas.toDataURL(); 
       } catch (e) {
+        document.body.removeChild(canvas);
         throw new Error("Segurança: Uma imagem está bloqueando a gravação. Tente usar o upload local ou Unsplash.");
       }
 
-      const mimeType = 'video/webm';
-      const stream = canvas.captureStream(24); 
+      const types = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+      const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+      
+      const stream = canvas.captureStream(30); // 30 FPS fixo
       const recorder = new MediaRecorder(stream, { 
         mimeType,
-        videoBitsPerSecond: 2_500_000 
+        videoBitsPerSecond: 5_000_000 
       });
       
       const chunks = [];
@@ -474,7 +489,8 @@ function App() {
       
       const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
-          if (chunks.length === 0) return reject(new Error('Erro: O navegador não gerou dados de vídeo.'));
+          document.body.removeChild(canvas);
+          if (chunks.length === 0) return reject(new Error('Erro: O navegador não gerou dados de vídeo. Tente reiniciar o navegador ou usar o Chrome/Edge.'));
           const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           setRecordedVideoUrl(url);
@@ -482,12 +498,12 @@ function App() {
         };
       });
 
-      // Aguarda o gravador realmente estar "quente" com timeout de segurança
       const onStartPromise = new Promise(resolve => { 
         const t = setTimeout(() => resolve(), 2000);
         recorder.onstart = () => { clearTimeout(t); resolve(); }; 
       });
-      recorder.start(500);
+      
+      recorder.start();
       await onStartPromise;
 
       for (let i = 0; i < slides.length; i++) {
@@ -498,9 +514,10 @@ function App() {
 
         while (Date.now() - startTime < slideDurationMs) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          ctx.fillStyle = i % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
+          // Pequena variação para garantir novos frames no encoder
+          ctx.fillStyle = Date.now() % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
           ctx.fillRect(0,0,1,1);
-          await sleep(100); 
+          await sleep(33); // ~30 FPS para gravação fluida
           if (!isRecording) break;
         }
       }
