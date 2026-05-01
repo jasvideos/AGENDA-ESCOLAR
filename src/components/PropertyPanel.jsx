@@ -1,13 +1,106 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Settings, Trash2, Type, Image as ImageIcon, Palette, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine, Wand2, Loader2, Sparkles, RotateCw } from 'lucide-react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { bgGallery } from '../templates';
+
+// ── COMPONENTE: Modal de Pincel para cobrir texto ──
+const PaintOverModal = ({ src, onApply, onClose }) => {
+  const canvasRef = useRef(null);
+  const [brushSize, setBrushSize] = useState(20);
+  const [brushColor, setBrushColor] = useState('#ffffff');
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+    };
+    img.onerror = () => {
+      // Fallback: tenta sem CORS
+      const img2 = new Image();
+      img2.onload = () => { canvas.width = img2.naturalWidth; canvas.height = img2.naturalHeight; ctx.drawImage(img2, 0, 0); };
+      img2.src = src;
+    };
+    img.src = src;
+  }, [src]);
+
+  const getPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  };
+
+  const paint = (e, forceStart = false) => {
+    if (!forceStart && !isDrawing) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const { x, y } = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fillStyle = brushColor;
+    ctx.fill();
+  };
+
+  const presetColors = ['#ffffff', '#000000', '#808080', '#ffff00', '#ff0000', '#0000ff', '#008000'];
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      background: 'rgba(0,0,0,0.93)', zIndex: 9000,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px'
+    }}>
+      {/* Toolbar */}
+      <div className="glass" style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px 16px', borderRadius: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>🎨 Pincel — Apagar texto/marca</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tamanho:</span>
+          <input type="range" min={4} max={80} value={brushSize} onChange={e => setBrushSize(Number(e.target.value))} style={{ width: '80px' }} />
+          <span style={{ fontSize: '0.75rem', minWidth: '28px' }}>{brushSize}px</span>
+        </div>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {presetColors.map(c => (
+            <button key={c} onClick={() => setBrushColor(c)}
+              style={{ width: '22px', height: '22px', background: c, borderRadius: '50%', border: brushColor === c ? '3px solid #60a5fa' : '2px solid rgba(255,255,255,0.3)', cursor: 'pointer', padding: 0 }} />
+          ))}
+          <input type="color" value={brushColor} onChange={e => setBrushColor(e.target.value)} style={{ width: '28px', height: '28px', border: 'none', background: 'none', cursor: 'pointer', borderRadius: '50%' }} title="Cor personalizada" />
+        </div>
+        <button className="button-primary" onClick={() => onApply(canvasRef.current.toDataURL('image/png'))} style={{ padding: '6px 18px' }}>✅ Aplicar</button>
+        <button className="button-secondary" onClick={onClose} style={{ padding: '6px 14px' }}>✕ Cancelar</button>
+      </div>
+      {/* Canvas */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', maxWidth: '95vw', maxHeight: '72vh' }}>
+        <canvas
+          ref={canvasRef}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'crosshair', borderRadius: '8px', boxShadow: '0 0 40px rgba(0,0,0,0.7)', display: 'block' }}
+          onMouseDown={e => { setIsDrawing(true); paint(e, true); }}
+          onMouseMove={paint}
+          onMouseUp={() => setIsDrawing(false)}
+          onMouseLeave={() => setIsDrawing(false)}
+          onTouchStart={e => { setIsDrawing(true); paint(e, true); }}
+          onTouchMove={paint}
+          onTouchEnd={() => setIsDrawing(false)}
+        />
+      </div>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>Arraste sobre o texto para cobri-lo. Escolha a cor do fundo da imagem.</p>
+    </div>
+  );
+};
 
 const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, activeSlide, updateSlide }) => {
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isClipdropProcessing, setIsClipdropProcessing] = useState(false);
   const [isHFProcessing, setIsHFProcessing] = useState(false);
+  const [showPaintModal, setShowPaintModal] = useState(false);
 
   if (!element) {
     return (
@@ -506,14 +599,23 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f97316, #ea580c)', color: 'white', border: 'none', opacity: isHFProcessing ? 0.7 : 1, cursor: isHFProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleHFRemoveBg} disabled={isHFProcessing}>
                 {isHFProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> IA Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> 🤗 Apagar Fundo (HF Grátis)</>)}
               </button>
-              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #7c3aed, #6d28d9)', color: 'white', border: 'none', opacity: isHFProcessing ? 0.7 : 1, cursor: isHFProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleHFRemoveText} disabled={isHFProcessing}>
-                {isHFProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> IA Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> 🤗 Remover Texto (HF Grátis)</>)}
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #7c3aed, #6d28d9)', color: 'white', border: 'none', cursor: 'pointer', marginBottom: '6px' }} onClick={() => setShowPaintModal(true)}>
+                <Sparkles size={16} style={{ marginRight: '8px' }} /> 🎨 Apagar Texto (Pincel)
               </button>
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f59e0b, #d97706)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer' }} onClick={() => handleClipdropTool('upscale')} disabled={isClipdropProcessing}>
                 {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Melhorar Qualidade (Upscale)</>)}
               </button>
               <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { 100% { transform: rotate(360deg); } }` }} />
             </div>
+
+            {/* ── MODAL PINCEL ── */}
+            {showPaintModal && (
+              <PaintOverModal
+                src={element.src}
+                onApply={(newSrc) => { updateElement(element.id, { src: newSrc }); setShowPaintModal(false); }}
+                onClose={() => setShowPaintModal(false)}
+              />
+            )}
             {renderOpacityControl()}
             {renderRotationControl()}
           </>
