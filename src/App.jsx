@@ -46,6 +46,11 @@ function App() {
   const [isPresenting, setIsPresenting] = useState(false);
   const [showShapeMenu, setShowShapeMenu] = useState(false);
   const [showImageMenu, setShowImageMenu] = useState(false);
+  const [showImageSearch, setShowImageSearch] = useState(false);
+  const [imageSearchQuery, setImageSearchQuery] = useState('');
+  const [imageSearchResults, setImageSearchResults] = useState([]);
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [imageSearchTarget, setImageSearchTarget] = useState('element'); // 'element' | 'background'
   const [isLooping, setIsLooping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState({ current: 0, total: 0, slideName: '' });
@@ -221,6 +226,45 @@ function App() {
       reader.readAsDataURL(file);
     }
     e.target.value = null;
+  };
+
+  const searchImages = async () => {
+    if (!imageSearchQuery.trim()) return;
+    setImageSearchLoading(true);
+    setImageSearchResults([]);
+    const results = [];
+    try {
+      const uk = localStorage.getItem('unsplash_api_key');
+      if (uk) {
+        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(imageSearchQuery)}&per_page=15&orientation=landscape`, { headers: { Authorization: `Client-ID ${uk}` } });
+        const data = await res.json();
+        (data.results || []).forEach(p => results.push({ url: p.urls.regular, thumb: p.urls.small, author: p.user.name, source: 'Unsplash' }));
+      }
+    } catch (e) { console.warn('Unsplash:', e); }
+    try {
+      const pk = localStorage.getItem('pexels_api_key');
+      if (pk) {
+        const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageSearchQuery)}&per_page=15&orientation=landscape`, { headers: { Authorization: pk } });
+        const data = await res.json();
+        (data.photos || []).forEach(p => results.push({ url: p.src.large, thumb: p.src.medium, author: p.photographer, source: 'Pexels' }));
+      }
+    } catch (e) { console.warn('Pexels:', e); }
+    if (results.length === 0 && !localStorage.getItem('unsplash_api_key') && !localStorage.getItem('pexels_api_key')) {
+      alert('Configure ao menos uma chave (Unsplash ou Pexels) nas ⚙️ Configurações do painel esquerdo.');
+    }
+    setImageSearchResults(results);
+    setImageSearchLoading(false);
+  };
+
+  const insertSearchedImage = (imageUrl) => {
+    if (imageSearchTarget === 'background') {
+      setSlides(slides.map(s => s.id === activeSlideId ? { ...s, bgImage: imageUrl, bgOpacity: 0.8 } : s));
+    } else {
+      const newEl = { id: `el-${Date.now()}`, type: 'image', x: 100, y: 100, w: 400, h: 250, src: imageUrl, style: {} };
+      setSlides(slides.map(s => s.id === activeSlideId ? { ...s, elements: [...s.elements, newEl] } : s));
+      setSelectedElementId(newEl.id);
+    }
+    setShowImageSearch(false);
   };
 
   const updateElement = (elementId, updates) => {
@@ -580,8 +624,10 @@ function App() {
                 <button className="button-secondary" onClick={() => setShowImageMenu(!showImageMenu)}><ImageIcon size={18} /> Imagem</button>
                 {showImageMenu && (
                   <div className="glass animate-fade-in" style={{ position: 'absolute', top: '45px', left: '0', width: '200px', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
-                    <button className="button-secondary" onClick={() => document.getElementById('local-image-input').click()}>Imagem Local</button>
-                    <button className="button-secondary" onClick={() => document.getElementById('bg-image-input').click()}>Imagem de Fundo</button>
+                    <button className="button-secondary" onClick={() => document.getElementById('local-image-input').click()}>📁 Imagem Local</button>
+                    <button className="button-secondary" onClick={() => document.getElementById('bg-image-input').click()}>🖼️ Imagem de Fundo</button>
+                    <button className="button-secondary" onClick={() => { setImageSearchTarget('element'); setShowImageSearch(true); setShowImageMenu(false); }}>🔍 Buscar Fotos Online</button>
+                    <button className="button-secondary" onClick={() => { setImageSearchTarget('background'); setShowImageSearch(true); setShowImageMenu(false); }}>🌄 Buscar Fundo Online</button>
                   </div>
                 )}
               </div>
@@ -660,6 +706,69 @@ function App() {
             <SlideCanvas slide={activeSlide} selectedElementId={selectedElementId} setSelectedElementId={setSelectedElementId} updateElement={updateElement} readOnly={isPresenting} deleteElement={deleteElement} />
           </div>
         </div>
+
+        {/* ── MODAL DE BUSCA DE IMAGENS ── */}
+        {showImageSearch && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            background: 'rgba(0,0,0,0.85)', zIndex: 3000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <div className="glass" style={{ width: '90%', maxWidth: '900px', maxHeight: '85vh', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={imageSearchQuery}
+                    onChange={e => setImageSearchQuery(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && searchImages()}
+                    placeholder="Buscar fotos: escola, natureza, tecnologia..."
+                    style={{ flex: 1, fontSize: '1rem', padding: '10px 14px', borderRadius: '8px' }}
+                    autoFocus
+                  />
+                  <button className="button-primary" onClick={searchImages} disabled={imageSearchLoading} style={{ padding: '10px 20px' }}>
+                    {imageSearchLoading ? <Loader2 size={18} className="animate-spin" /> : '🔍 Buscar'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', fontSize: '0.8rem' }}>
+                  <button onClick={() => setImageSearchTarget('element')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchTarget === 'element' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>Inserir no Slide</button>
+                  <button onClick={() => setImageSearchTarget('background')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchTarget === 'background' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>Usar como Fundo</button>
+                </div>
+                <button className="button-secondary" onClick={() => setShowImageSearch(false)} style={{ padding: '8px 14px' }}>✕ Fechar</button>
+              </div>
+              {/* Grid */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                {imageSearchLoading && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+                    <Loader2 size={36} className="animate-spin" style={{ color: 'var(--accent)' }} />
+                  </div>
+                )}
+                {!imageSearchLoading && imageSearchResults.length === 0 && (
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
+                    <p>Digite um tema e clique em 🔍 Buscar</p>
+                    <p style={{ fontSize: '0.8rem', marginTop: '8px' }}>ex: escola, natureza, ciências, esportes</p>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                  {imageSearchResults.map((img, i) => (
+                    <div key={i} onClick={() => insertSearchedImage(img.url)}
+                      style={{ borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', position: 'relative', aspectRatio: '16/9', background: '#1e293b', border: '2px solid transparent', transition: 'border-color 0.2s, transform 0.2s' }}
+                      onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.transform = 'scale(1.03)'; }}
+                      onMouseOut={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
+                    >
+                      <img src={img.thumb} alt={img.author} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 6px', background: 'rgba(0,0,0,0.6)', fontSize: '0.65rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.author}</span>
+                        <span style={{ opacity: 0.6, color: img.source === 'Unsplash' ? '#6ee7b7' : '#93c5fd' }}>{img.source}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {recordedVideoUrl && (
           <div className="glass animate-fade-in" style={{ 
