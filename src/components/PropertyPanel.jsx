@@ -68,10 +68,14 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     setIsRemovingBg(true);
     try {
       let input = element.src;
-      // If it's a dataURL, convert to Blob (required by @imgly/background-removal)
-      if (typeof input === 'string' && input.startsWith('data:')) {
+      // If it's a URL, try to fetch it as a blob first to handle CORS/format issues
+      if (typeof input === 'string' && input.startsWith('http')) {
+        const response = await fetch(input);
+        input = await response.blob();
+      } else if (typeof input === 'string' && input.startsWith('data:')) {
         input = dataUrlToBlob(input);
       }
+      
       const config = {
         publicPath: 'https://unpkg.com/@imgly/background-removal@1.7.0/dist/',
         debug: false,
@@ -82,7 +86,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       reader.readAsDataURL(blob);
     } catch (err) {
       console.error('Erro ao remover fundo:', err);
-      alert('Não foi possível remover o fundo. Certifique-se de usar uma imagem carregada localmente.');
+      alert('Não foi possível remover o fundo automaticamente. Dica: Tente baixar a imagem e fazer o upload local para melhores resultados.');
     } finally {
       setIsRemovingBg(false);
     }
@@ -330,6 +334,21 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
               <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Arredondamento: {element.style?.borderRadius || '0px'}</label>
               <input type="range" min="0" max="100" value={parseInt(element.style?.borderRadius) || 0} onChange={(e) => handleStyleChange('borderRadius', `${e.target.value}px`)} style={{ width: '100%' }} />
             </div>
+            {renderRotationControl()}
+          </>
+        )}
+
+        {/* ── SVG (ELEMENTOS GRÁFICOS) ── */}
+        {element.type === 'svg' && (
+          <>
+            <div className="prop-group">
+              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Cor do Elemento</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input type="color" value={element.style?.color || '#ffffff'} onChange={(e) => handleStyleChange('color', e.target.value)} style={{ width: '40px', height: '40px', padding: 0, border: 'none' }} />
+                <input type="text" value={element.style?.color} onChange={(e) => handleStyleChange('color', e.target.value)} style={{ flex: 1 }} />
+              </div>
+            </div>
+            {renderOpacityControl()}
             {renderRotationControl()}
           </>
         )}

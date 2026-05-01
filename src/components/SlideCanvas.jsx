@@ -101,7 +101,7 @@ const SlideCanvas = ({ slide, selectedElementId, setSelectedElementId, updateEle
             onResizeStop={(e, direction, ref, delta, position) => {
               updateElement(el.id, { w: ref.style.width, h: ref.style.height, ...position });
             }}
-            bounds="parent"
+            bounds=""
             onClick={(e) => { if (readOnly) return; e.stopPropagation(); setSelectedElementId(el.id); }}
             className={readOnly && el.style?.animation ? `animate-${el.style.animation}` : ''}
             style={{
