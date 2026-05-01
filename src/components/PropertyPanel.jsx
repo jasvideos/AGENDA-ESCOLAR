@@ -166,26 +166,26 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       const srcRes = await fetch(element.src);
       const imageBlob = await srcRes.blob();
 
-      // Usa o modelo instruct-pix2pix para remover texto com instrução em linguagem natural
+      // HF Inference API — image-to-image: envia imagem como binary body
+      // Modelo: instruct-pix2pix aceita imagem + instrução via query string
+      const prompt = encodeURIComponent('remove all text, watermarks and overlays, restore the background, keep natural look');
       const response = await fetch(
-        'https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix',
+        `https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${hfKey}`,
-            'Content-Type': 'application/json',
+            'Content-Type': imageBlob.type || 'image/png',
+            'X-Wait-For-Model': 'true',
           },
-          body: JSON.stringify({
-            inputs: {
-              image: await blobToBase64(imageBlob),
-              prompt: 'remove all text, watermarks, labels and overlays from the image, keep the original background clean',
-              negative_prompt: 'text, watermark, label, letters, numbers, words',
-              num_inference_steps: 20,
-              image_guidance_scale: 1.5,
-            }
-          }),
+          body: imageBlob,
         }
       );
+
+      if (response.status === 503) {
+        alert('⏳ O modelo está carregando no servidor HF (pode levar 20-60s na 1ª vez). Tente novamente em instantes.');
+        return;
+      }
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
@@ -198,8 +198,8 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       reader.readAsDataURL(resultBlob);
     } catch (err) {
       console.error('HF error:', err);
-      if (err.message.includes('loading')) {
-        alert('⏳ O modelo está carregando no servidor. Tente novamente em 30 segundos.');
+      if (err.name === 'TypeError') {
+        alert('⚠️ Erro de rede ao conectar ao Hugging Face. Verifique sua conexão ou tente novamente.');
       } else {
         alert(`Falha no Hugging Face: ${err.message}`);
       }

@@ -5,12 +5,48 @@ import { slideTemplates } from '../templates';
 const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, deleteSlide, setExternalState, updateSlide }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [settingsUnlocked, setSettingsUnlocked] = useState(false);
+  const [settingsPinInput, setSettingsPinInput] = useState('');
+  const [settingsPinError, setSettingsPinError] = useState('');
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [bgRemoveKey, setBgRemoveKey] = useState(localStorage.getItem('bg_remove_api_key') || '');
   const [unsplashKey, setUnsplashKey] = useState(localStorage.getItem('unsplash_api_key') || '');
   const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('pexels_api_key') || '');
   const [clipdropKey, setClipdropKey] = useState(localStorage.getItem('clipdrop_api_key') || '');
   const [hfKey, setHfKey] = useState(localStorage.getItem('hf_api_key') || '');
+
+  const handleOpenSettings = () => {
+    const hasPin = !!localStorage.getItem('settings_pin');
+    if (!hasPin || settingsUnlocked) {
+      setShowSettings(!showSettings);
+      if (showSettings) { setSettingsUnlocked(false); setSettingsPinInput(''); }
+    } else {
+      setShowSettings(true);
+      setSettingsUnlocked(false);
+      setSettingsPinInput('');
+      setSettingsPinError('');
+    }
+  };
+
+  const handlePinSubmit = () => {
+    const stored = localStorage.getItem('settings_pin');
+    if (!stored) {
+      // Define a senha pela primeira vez
+      if (settingsPinInput.length !== 8) { setSettingsPinError('A senha deve ter exatamente 8 caracteres.'); return; }
+      localStorage.setItem('settings_pin', settingsPinInput);
+      setSettingsUnlocked(true);
+      setSettingsPinError('');
+    } else {
+      if (settingsPinInput === stored) {
+        setSettingsUnlocked(true);
+        setSettingsPinError('');
+      } else {
+        setSettingsPinError('Senha incorreta. Tente novamente.');
+        setSettingsPinInput('');
+      }
+    }
+  };
+
   const exportProject = () => {
     const data = JSON.stringify(slides);
     const blob = new Blob([data], { type: 'application/json' });
@@ -141,13 +177,50 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
         </button>
         <input type="file" id="import-project" style={{ display: 'none' }} accept=".anix,.json" onChange={importProject} />
         
-        <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '10px', opacity: 0.8 }} onClick={() => setShowSettings(!showSettings)}>
+        <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '10px', opacity: 0.8 }} onClick={handleOpenSettings}>
           <Settings size={16} style={{ marginRight: '8px' }} /> Configurações (IA)
         </button>
       </div>
 
       {showSettings && (
         <div style={{ padding: '15px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
+
+          {/* ── TELA DE SENHA ── */}
+          {!settingsUnlocked && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🔒</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '4px' }}>
+                {localStorage.getItem('settings_pin') ? 'Digite sua senha' : 'Defina uma senha (8 caracteres)'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                {localStorage.getItem('settings_pin') ? 'Necessário para acessar as Configurações' : 'Crie uma senha para proteger suas chaves de API'}
+              </div>
+              <input
+                type="password"
+                maxLength={8}
+                value={settingsPinInput}
+                onChange={e => setSettingsPinInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handlePinSubmit()}
+                placeholder="●●●●●●●●"
+                style={{ width: '100%', textAlign: 'center', letterSpacing: '6px', fontSize: '1.2rem', marginBottom: '8px', padding: '8px' }}
+                autoFocus
+              />
+              {settingsPinError && <div style={{ color: '#f87171', fontSize: '0.75rem', marginBottom: '8px' }}>{settingsPinError}</div>}
+              <button className="button-primary" style={{ width: '100%' }} onClick={handlePinSubmit}>
+                {localStorage.getItem('settings_pin') ? '🔓 Entrar' : '🔒 Definir Senha'}
+              </button>
+              {localStorage.getItem('settings_pin') && (
+                <button style={{ marginTop: '6px', background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer' }}
+                  onClick={() => { if (window.confirm('Remover a senha?')) { localStorage.removeItem('settings_pin'); setSettingsUnlocked(true); } }}>
+                  Remover senha
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── CONTEÚDO DAS CONFIGURAÇÕES (só quando desbloqueado) ── */}
+          {settingsUnlocked && (
+            <>
           <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Google Gemini API Key</label>
           <input 
             type="password" 
@@ -223,6 +296,21 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
             style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
           />
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Grátis em <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>huggingface.co/settings/tokens</a> — Remover texto, limpar imagens</span>
+
+          <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+            <button style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', width: '100%' }}
+              onClick={() => {
+                const newPin = window.prompt('Digite a nova senha (8 caracteres):');
+                if (!newPin) return;
+                if (newPin.length !== 8) { alert('A senha deve ter exatamente 8 caracteres.'); return; }
+                localStorage.setItem('settings_pin', newPin);
+                alert('Senha alterada com sucesso!');
+              }}>
+              🔑 Alterar Senha das Configurações
+            </button>
+          </div>
+            </>
+          )}
         </div>
       )}
     </aside>
