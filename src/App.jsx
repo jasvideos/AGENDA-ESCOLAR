@@ -430,9 +430,12 @@ function App() {
     }
   };
 
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
+
   const exportVideo = async () => {
     if (isRecording) return;
     setIsRecording(true);
+    setRecordedVideoUrl(null);
     try {
       const canvas = document.createElement('canvas');
       canvas.width = VIDEO_W; canvas.height = VIDEO_H;
@@ -442,10 +445,9 @@ function App() {
 
       setRecordingProgress({ current: 0, total: slides.length, slideName: 'Verificando segurança...' });
       
-      // Teste de segurança (CORS)
       await renderSlideToCanvas(ctx, slides[0], scaleX, scaleY);
       try {
-        canvas.toDataURL(); // Se falhar aqui, o canvas está sujo (tainted)
+        canvas.toDataURL();
       } catch (e) {
         throw new Error("Segurança do Navegador: Uma imagem ou fundo está bloqueando a gravação (CORS). Tente usar imagens de outra fonte ou remova a imagem atual.");
       }
@@ -459,7 +461,12 @@ function App() {
         }
       }
 
-      const types = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+      const types = [
+        'video/webm;codecs=h264',
+        'video/webm;codecs=vp8',
+        'video/webm;codecs=vp9',
+        'video/webm'
+      ];
       const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
       
       const stream = canvas.captureStream(30); 
@@ -476,9 +483,7 @@ function App() {
           if (chunks.length === 0) return reject(new Error('Falha na captura: O navegador não gerou dados de vídeo.'));
           const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = `anixslide-${Date.now()}.webm`; a.click();
-          URL.revokeObjectURL(url);
+          setRecordedVideoUrl(url);
           resolve();
         };
       });
@@ -493,7 +498,6 @@ function App() {
 
         while (Date.now() - startTime < slideDurationMs) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          // Heartbeat para garantir frames
           ctx.fillStyle = 'rgba(255,255,255,0.001)';
           ctx.fillRect(0,0,1,1);
           await sleep(50);
@@ -612,6 +616,53 @@ function App() {
             <SlideCanvas slide={activeSlide} selectedElementId={selectedElementId} setSelectedElementId={setSelectedElementId} updateElement={updateElement} readOnly={isPresenting} deleteElement={deleteElement} />
           </div>
         </div>
+
+        {recordedVideoUrl && (
+          <div className="glass animate-fade-in" style={{ 
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+            zIndex: 2000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.9)'
+          }}>
+            <div style={{ width: '80%', maxWidth: '960px', background: '#1e293b', padding: '20px', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ margin: 0 }}>Prévia do Vídeo Full HD</h3>
+                <button className="button-secondary" onClick={() => setRecordedVideoUrl(null)}>Fechar</button>
+              </div>
+              <video src={recordedVideoUrl} controls autoPlay style={{ width: '100%', borderRadius: '8px', background: '#000' }} />
+              <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <a href={recordedVideoUrl} download={`anixslide-${Date.now()}.webm`} className="button-primary">Baixar Vídeo Agora</a>
+                <button className="button-secondary" onClick={() => setRecordedVideoUrl(null)}>Descartar e Voltar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isRecording && (
+          <div className="glass animate-fade-in" style={{ 
+            position: 'fixed', bottom: '20px', right: '20px', width: '300px', padding: '15px', 
+            borderRadius: '12px', zIndex: 1500, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <Loader2 className="animate-spin" size={20} color="var(--accent)" />
+              <span style={{ fontWeight: 'bold' }}>Gravando HD...</span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '5px' }}>
+              Slide {recordingProgress.current} de {recordingProgress.total}
+            </div>
+            <div style={{ fontSize: '0.8rem', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {recordingProgress.slideName}
+            </div>
+            <div style={{ height: '4px', width: '100%', background: '#334155', borderRadius: '2px', marginTop: '10px' }}>
+              <div style={{ 
+                height: '100%', 
+                width: `${(recordingProgress.current / recordingProgress.total) * 100}%`, 
+                background: 'var(--accent)', 
+                borderRadius: '2px',
+                transition: 'width 0.3s ease'
+              }} />
+            </div>
+          </div>
+        )}
       </main>
 
       {!isPresenting && (
