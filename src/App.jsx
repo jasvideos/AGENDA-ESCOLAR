@@ -423,32 +423,60 @@ function App() {
       const ctx = canvas.getContext('2d');
       const scaleX = VIDEO_W / SLIDE_W;
       const scaleY = VIDEO_H / SLIDE_H;
+
+      // 1. Pré-carregamento de todos os assets para garantir fluidez
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Otimizando ativos...' });
+      for (const slide of slides) {
+        if (slide.bgImage) await loadImage(slide.bgImage);
+        for (const el of slide.elements) {
+          if (el.type === 'image' && el.src) await loadImage(el.src);
+        }
+      }
+
       const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
       const stream = canvas.captureStream(30);
       const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 12_000_000 });
       const chunks = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `anixslide-fullhd-${Date.now()}.webm`; a.click();
-        URL.revokeObjectURL(url);
-        setIsRecording(false);
-        setRecordingProgress({ current: 0, total: 0, slideName: '' });
-      };
+      
+      const onStopPromise = new Promise(resolve => {
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `anixslide-fullhd-${Date.now()}.webm`; a.click();
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+      });
+
       recorder.start(100);
+
+      // 2. Loop de renderização contínua por slide
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
-        const duration = (slide.duration || DEFAULT_DURATION) * 1000;
+        const slideDurationMs = (slide.duration || DEFAULT_DURATION) * 1000;
+        const startTime = Date.now();
+        
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
-        await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-        await sleep(duration);
+
+        // Renderiza repetidamente durante a duração do slide para manter o stream ativo
+        while (Date.now() - startTime < slideDurationMs) {
+          await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
+          await sleep(200); // Frequência de atualização durante a gravação
+          if (!isRecording) break; // Interrompe se cancelado
+        }
       }
+
       recorder.stop();
+      await onStopPromise; // Aguarda o processamento final do MediaRecorder
+      
+      setIsRecording(false);
+      setRecordingProgress({ current: 0, total: 0, slideName: '' });
     } catch (err) {
       console.error('Erro ao gravar vídeo:', err);
       setIsRecording(false);
+      setRecordingProgress({ current: 0, total: 0, slideName: '' });
     }
   };
 
