@@ -153,6 +153,65 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     }
   };
 
+  // Converte qualquer src (URL ou dataURL) para base64 via canvas — evita CORS no fetch
+  const srcToBase64 = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png').split(',')[1]);
+    };
+    img.onerror = () => reject(new Error('Não foi possível carregar a imagem. Tente fazer o upload local primeiro.'));
+    img.src = src;
+  });
+
+  // 🤗 HF — Remover Fundo (briaai/RMBG-1.4) — Grátis e funciona do browser
+  const handleHFRemoveBg = async () => {
+    if (!element.src) return;
+    const hfKey = localStorage.getItem('hf_api_key');
+    if (!hfKey) {
+      alert('Configure sua Hugging Face API Key nas Configurações (⚙️). É grátis em huggingface.co/settings/tokens');
+      return;
+    }
+    setIsHFProcessing(true);
+    try {
+      const base64 = await srcToBase64(element.src);
+      const response = await fetch(
+        'https://api-inference.huggingface.co/models/briaai/RMBG-1.4',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${hfKey}`,
+            'Content-Type': 'application/json',
+            'X-Wait-For-Model': 'true',
+          },
+          body: JSON.stringify({ inputs: base64 }),
+        }
+      );
+      if (response.status === 503) {
+        alert('⏳ Modelo carregando no HF. Aguarde 20-40s e tente novamente.');
+        return;
+      }
+      if (!response.ok) {
+        const e = await response.json().catch(() => ({}));
+        throw new Error(e.error || `Erro ${response.status}`);
+      }
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => updateElement(element.id, { src: reader.result });
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error('HF RMBG error:', err);
+      alert(`Falha (HF Fundo): ${err.message}`);
+    } finally {
+      setIsHFProcessing(false);
+    }
+  };
+
+  // 🤗 HF — Remover Texto via inpainting (experimental)
   const handleHFRemoveText = async () => {
     if (!element.src) return;
     const hfKey = localStorage.getItem('hf_api_key');
@@ -162,47 +221,41 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     }
     setIsHFProcessing(true);
     try {
-      // Converte src para Blob
-      const srcRes = await fetch(element.src);
-      const imageBlob = await srcRes.blob();
-
-      // HF Inference API — image-to-image: envia imagem como binary body
-      // Modelo: instruct-pix2pix aceita imagem + instrução via query string
-      const prompt = encodeURIComponent('remove all text, watermarks and overlays, restore the background, keep natural look');
+      const base64 = await srcToBase64(element.src);
       const response = await fetch(
-        `https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix`,
+        'https://api-inference.huggingface.co/models/Uminosachi/realisticVisionV51_v51VAE-inpainting',
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${hfKey}`,
-            'Content-Type': imageBlob.type || 'image/png',
+            'Content-Type': 'application/json',
             'X-Wait-For-Model': 'true',
           },
-          body: imageBlob,
+          body: JSON.stringify({
+            inputs: base64,
+            parameters: {
+              prompt: 'clean background, no text, no watermark, photorealistic',
+              negative_prompt: 'text, watermark, words, letters, numbers',
+              num_inference_steps: 25,
+            }
+          }),
         }
       );
-
       if (response.status === 503) {
-        alert('⏳ O modelo está carregando no servidor HF (pode levar 20-60s na 1ª vez). Tente novamente em instantes.');
+        alert('⏳ Modelo carregando no HF. Aguarde 30-60s e tente novamente.');
         return;
       }
-
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || `Erro ${response.status}`);
+        const e = await response.json().catch(() => ({}));
+        throw new Error(e.error || `Erro ${response.status}`);
       }
-
-      const resultBlob = await response.blob();
+      const blob = await response.blob();
       const reader = new FileReader();
       reader.onloadend = () => updateElement(element.id, { src: reader.result });
-      reader.readAsDataURL(resultBlob);
+      reader.readAsDataURL(blob);
     } catch (err) {
-      console.error('HF error:', err);
-      if (err.name === 'TypeError') {
-        alert('⚠️ Erro de rede ao conectar ao Hugging Face. Verifique sua conexão ou tente novamente.');
-      } else {
-        alert(`Falha no Hugging Face: ${err.message}`);
-      }
+      console.error('HF text removal error:', err);
+      alert(`Falha (HF Texto): ${err.message}`);
     } finally {
       setIsHFProcessing(false);
     }
@@ -443,7 +496,10 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #0ea5e9, #0284c7)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={() => handleClipdropTool('remove-text')} disabled={isClipdropProcessing}>
                 {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando Clipdrop...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Remover Texto (Clipdrop)</>)}
               </button>
-              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f97316, #ea580c)', color: 'white', border: 'none', opacity: isHFProcessing ? 0.7 : 1, cursor: isHFProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleHFRemoveText} disabled={isHFProcessing}>
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f97316, #ea580c)', color: 'white', border: 'none', opacity: isHFProcessing ? 0.7 : 1, cursor: isHFProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleHFRemoveBg} disabled={isHFProcessing}>
+                {isHFProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> IA Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> 🤗 Apagar Fundo (HF Grátis)</>)}
+              </button>
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #7c3aed, #6d28d9)', color: 'white', border: 'none', opacity: isHFProcessing ? 0.7 : 1, cursor: isHFProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleHFRemoveText} disabled={isHFProcessing}>
                 {isHFProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> IA Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> 🤗 Remover Texto (HF Grátis)</>)}
               </button>
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f59e0b, #d97706)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer' }} onClick={() => handleClipdropTool('upscale')} disabled={isClipdropProcessing}>
