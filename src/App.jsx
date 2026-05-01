@@ -440,33 +440,49 @@ function App() {
       const scaleX = VIDEO_W / SLIDE_W;
       const scaleY = VIDEO_H / SLIDE_H;
 
-      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Preparando ativos...' });
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Preparando motor...' });
       
-      // Pré-carrega tudo para garantir que nada falhe por rede
+      // Warm-up render para ativar o canvas antes da captura
+      await renderSlideToCanvas(ctx, slides[0] || initialSlides[0], scaleX, scaleY);
+      
+      // Pré-carregamento total
       for (const slide of slides) {
         if (slide.bgImage) await loadImage(slide.bgImage);
         for (const el of slide.elements) {
           if (el.type === 'image' && el.src) await loadImage(el.src);
-          // SVGs são pré-carregados no renderSlideToCanvas mas aqui garantimos a primeira carga
           if (el.type === 'svg') await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
         }
       }
 
-      const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+      const types = ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'];
       const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
       
-      const stream = canvas.captureStream(24); // 24 FPS para balanço entre qualidade e performance
+      // Captura sem FPS fixo para permitir que o navegador gerencie os frames sob demanda
+      const stream = canvas.captureStream(); 
       const recorder = new MediaRecorder(stream, { 
-        mimeType, 
-        videoBitsPerSecond: 8_000_000 // 8 Mbps para Full HD estável
+        mimeType,
+        videoBitsPerSecond: 5_000_000 // Reduzido para 5Mbps para maior estabilidade
       });
       
       const chunks = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onerror = (e) => console.error('Recorder Error:', e);
+      recorder.ondataavailable = (e) => { 
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+          console.log(`Chunk recebido: ${e.data.size} bytes`);
+        }
+      };
       
-      const onStopPromise = new Promise(resolve => {
+      recorder.onerror = (e) => {
+        console.error('Erro no MediaRecorder:', e);
+        alert('Erro na gravação: O navegador interrompeu o processo.');
+      };
+      
+      const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
+          if (chunks.length === 0) {
+            reject(new Error('Nenhum dado de vídeo foi capturado (0KB). Verifique se há imagens bloqueadas por CORS.'));
+            return;
+          }
           const blob = new Blob(chunks, { type: mimeType });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -476,7 +492,7 @@ function App() {
         };
       });
 
-      recorder.start(100);
+      recorder.start(200); // Emite dados a cada 200ms
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
@@ -487,7 +503,11 @@ function App() {
 
         while (Date.now() - startTime < slideDurationMs) {
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
-          await sleep(60); // ~16 FPS rendering durante a gravação
+          // Pequena animação interna ou mudança forçada para garantir emissão de frames
+          ctx.fillStyle = 'rgba(0,0,0,0.01)';
+          ctx.fillRect(0,0,1,1);
+          
+          await sleep(50); // ~20 FPS render
           if (!isRecording) break;
         }
       }
@@ -499,6 +519,7 @@ function App() {
       setRecordingProgress({ current: 0, total: 0, slideName: '' });
     } catch (err) {
       console.error('Erro na gravação:', err);
+      alert(err.message || 'Erro ao gerar vídeo.');
       setIsRecording(false);
       setRecordingProgress({ current: 0, total: 0, slideName: '' });
     }
