@@ -22,7 +22,7 @@ export const bgGallery = [
 
 // ── Decorative SVG elements for the repository ──────────────────────────────
 export const decorativeElements = [
-  // ── Memphis Style (Novo) ──
+  // ── Memphis Style ──
   {
     category: 'Memphis & Moderno',
     items: [
@@ -30,18 +30,25 @@ export const decorativeElements = [
       { name: 'Grid de Pontos', svg: `<svg viewBox="0 0 100 100"><circle cx="10" cy="10" r="2" fill="currentColor"/><circle cx="30" cy="10" r="2" fill="currentColor"/><circle cx="50" cy="10" r="2" fill="currentColor"/><circle cx="70" cy="10" r="2" fill="currentColor"/><circle cx="90" cy="10" r="2" fill="currentColor"/><circle cx="10" cy="30" r="2" fill="currentColor"/><circle cx="30" cy="30" r="2" fill="currentColor"/><circle cx="50" cy="30" r="2" fill="currentColor"/><circle cx="70" cy="30" r="2" fill="currentColor"/><circle cx="90" cy="30" r="2" fill="currentColor"/><circle cx="10" cy="50" r="2" fill="currentColor"/><circle cx="30" cy="50" r="2" fill="currentColor"/><circle cx="50" cy="50" r="2" fill="currentColor"/><circle cx="70" cy="50" r="2" fill="currentColor"/><circle cx="90" cy="50" r="2" fill="currentColor"/><circle cx="10" cy="70" r="2" fill="currentColor"/><circle cx="30" cy="70" r="2" fill="currentColor"/><circle cx="50" cy="70" r="2" fill="currentColor"/><circle cx="70" cy="70" r="2" fill="currentColor"/><circle cx="90" cy="70" r="2" fill="currentColor"/><circle cx="10" cy="90" r="2" fill="currentColor"/><circle cx="30" cy="90" r="2" fill="currentColor"/><circle cx="50" cy="90" r="2" fill="currentColor"/><circle cx="70" cy="90" r="2" fill="currentColor"/><circle cx="90" cy="90" r="2" fill="currentColor"/></svg>` },
       { name: 'ZigZag Largo', svg: `<svg viewBox="0 0 100 40"><path d="M0,20 L10,10 L20,20 L30,10 L40,20 L50,10 L60,20 L70,10 L80,20 L90,10 L100,20" fill="none" stroke="currentColor" stroke-width="4"/></svg>` },
       { name: 'Círculos Wireframe', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/><circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5"/><circle cx="50" cy="50" r="20" fill="none" stroke="currentColor" stroke-width="1" opacity="0.8"/><circle cx="50" cy="50" r="10" fill="currentColor"/></svg>` },
+      { name: 'Semicírculo', svg: `<svg viewBox="0 0 100 50"><path d="M100,50 A50,50 0 1,0 0,50 Z" fill="currentColor"/></svg>` },
+      { name: 'Triângulo Vazado', svg: `<svg viewBox="0 0 100 100"><path d="M50,10 L90,90 L10,90 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>` },
+      { name: 'Anel', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="8"/><circle cx="50" cy="50" r="20" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/></svg>` },
+      { name: 'Pílula', svg: `<svg viewBox="0 0 100 40"><rect x="10" y="5" width="80" height="30" rx="15" fill="currentColor"/></svg>` },
     ]
   },
-  // ── Brush Premium (Melhorado) ──
+  // ── Brush Premium ──
   {
     category: 'Brush & Pinceladas',
     items: [
       { name: 'Pincelada Rústica', svg: `<svg viewBox="0 0 200 50"><path d="M5,25 Q40,5 80,20 T150,25 T195,20" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/><path d="M10,28 Q45,8 85,23 T155,28 T190,23" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity="0.5"/><path d="M15,22 Q50,2 90,17 T160,22 T185,17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/></svg>` },
       { name: 'Pincelada Larga Plana', svg: `<svg viewBox="0 0 200 40"><rect x="0" y="10" width="200" height="20" rx="2" fill="currentColor"/><path d="M0,15 L200,15" fill="none" stroke="white" stroke-width="1" opacity="0.2"/><path d="M0,25 L200,25" fill="none" stroke="black" stroke-width="1" opacity="0.1"/></svg>` },
       { name: 'Brush Vertical', svg: `<svg viewBox="0 0 40 100"><path d="M20,5 Q35,40 20,70 T20,95" fill="none" stroke="currentColor" stroke-width="15" stroke-linecap="round"/><path d="M15,10 Q25,40 15,70 T15,90" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" opacity="0.4"/></svg>` },
+      { name: 'Mancha Splash', svg: `<svg viewBox="0 0 100 100"><path d="M50,10 Q60,30 80,40 T90,70 T60,90 T20,70 T10,40 T50,10" fill="currentColor"/><circle cx="30" cy="20" r="5" fill="currentColor" opacity="0.6"/><circle cx="70" cy="80" r="3" fill="currentColor" opacity="0.8"/></svg>` },
+      { name: 'Pincel Suave', svg: `<svg viewBox="0 0 100 30"><path d="M0,15 C30,5 70,25 100,15" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" opacity="0.8"/></svg>` },
+      { name: 'Brush Duplo', svg: `<svg viewBox="0 0 100 40"><path d="M5,15 Q50,5 95,15" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M5,25 Q50,35 95,25" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.5"/></svg>` },
     ]
   },
-  // ── Ícones de Interface (Novo) ──
+  // ── Ícones de Interface ──
   {
     category: 'Ícones & UI',
     items: [
@@ -49,15 +56,22 @@ export const decorativeElements = [
       { name: 'Impressora', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>` },
       { name: 'Lupa Pesquisa', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>` },
       { name: 'Documento Texto', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>` },
+      { name: 'Configurações', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1V15a2 2 0 0 1-2-2 2 2 0 0 1 2-2v-.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1V11a2 2 0 0 1 2 2 2 2 0 0 1-2 2v.09a1.65 1.65 0 0 0-1.51 1z"/></svg>` },
+      { name: 'Câmera', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>` },
+      { name: 'Mensagem', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>` },
+      { name: 'Estrela UI', svg: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
     ]
   },
   // ── Floral Premium ──
   {
-    category: 'Floral Premium',
+    category: 'Floral & Natureza',
     items: [
       { name: 'Ramo Elegante', svg: `<svg viewBox="0 0 100 100"><path d="M20,90 Q40,50 80,10" fill="none" stroke="currentColor" stroke-width="3"/><path d="M30,75 C20,65 20,55 35,55 C45,55 50,65 30,75 Z" fill="currentColor"/><path d="M45,55 C35,45 35,35 50,35 C60,35 65,45 45,55 Z" fill="currentColor"/><path d="M60,35 C50,25 50,15 65,15 C75,15 80,25 60,35 Z" fill="currentColor"/><path d="M45,80 C55,90 65,90 65,75 C65,65 55,60 45,80 Z" fill="currentColor"/><path d="M60,60 C70,70 80,70 80,55 C80,45 70,40 60,60 Z" fill="currentColor"/><path d="M75,40 C85,50 95,50 95,35 C95,25 85,20 75,40 Z" fill="currentColor"/></svg>` },
       { name: 'Lótus Abstrato', svg: `<svg viewBox="0 0 100 100"><path d="M50,85 C20,70 10,40 15,20 C30,30 45,45 50,60 C55,45 70,30 85,20 C90,40 80,70 50,85 Z" fill="currentColor"/><path d="M50,75 C30,60 25,35 30,15 C40,25 45,40 50,50 C55,40 60,25 70,15 C75,35 70,60 50,75 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50,85 C50,85 45,10 50,5 C55,10 50,85 50,85 Z" fill="currentColor"/></svg>` },
       { name: 'Flor Minimalista', svg: `<svg viewBox="0 0 100 100"><path d="M50,90 C45,60 40,30 50,10 C60,30 55,60 50,90 Z" fill="currentColor" opacity="0.4"/><path d="M50,90 C45,60 40,30 50,10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50,40 C30,30 10,40 10,60 C30,70 45,60 50,40 Z" fill="currentColor" opacity="0.4"/><path d="M50,40 C30,30 10,40 10,60 C30,70 45,60 50,40" fill="none" stroke="currentColor" stroke-width="2"/><path d="M50,40 C70,30 90,40 90,60 C70,70 55,60 50,40 Z" fill="currentColor" opacity="0.4"/><path d="M50,40 C70,30 90,40 90,60 C70,70 55,60 50,40" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="50" cy="40" r="5" fill="currentColor"/></svg>` },
+      { name: 'Folha de Palmeira', svg: `<svg viewBox="0 0 100 100"><path d="M50,100 L50,10 Q20,30 10,60 Q20,50 50,40 Q80,50 90,60 Q80,30 50,10" fill="currentColor"/><path d="M50,100 L50,10" fill="none" stroke="white" stroke-width="1" opacity="0.3"/></svg>` },
+      { name: 'Montanha', svg: `<svg viewBox="0 0 100 60"><path d="M10,60 L50,10 L90,60 Z" fill="currentColor"/><path d="M50,10 L70,35 L55,45 L65,60 L35,60 L45,45 L30,35 Z" fill="white" opacity="0.3"/></svg>` },
+      { name: 'Sol / Brilho', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="20" fill="currentColor"/><path d="M50,5 L50,25 M50,75 L50,95 M5,50 L25,50 M75,50 L95,50 M18,18 L32,32 M68,68 L82,82 M18,82 L32,68 M68,32 L82,18" fill="none" stroke="currentColor" stroke-width="4"/></svg>` },
     ]
   },
 ];
