@@ -7,6 +7,8 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
   const [showTemplates, setShowTemplates] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [bgRemoveKey, setBgRemoveKey] = useState(localStorage.getItem('bg_remove_api_key') || '');
+  const [unsplashKey, setUnsplashKey] = useState(localStorage.getItem('unsplash_api_key') || '');
+  const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('pexels_api_key') || '');
   const exportProject = () => {
     const data = JSON.stringify(slides);
     const blob = new Blob([data], { type: 'application/json' });
@@ -164,9 +166,35 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
               localStorage.setItem('bg_remove_api_key', e.target.value);
             }}
             placeholder="Cole sua Remove.bg API Key aqui..."
-            style={{ width: '100%', marginBottom: '5px', fontSize: '0.8rem' }}
+            style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
           />
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Obtenha sua chave grátis em <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>remove.bg/api</a> (50 imagens/mês grátis)</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '12px' }}>Grátis em <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>remove.bg/api</a> (50/mês)</span>
+
+          <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Unsplash API Key (Busca de Fotos)</label>
+          <input 
+            type="password" 
+            value={unsplashKey}
+            onChange={(e) => {
+              setUnsplashKey(e.target.value);
+              localStorage.setItem('unsplash_api_key', e.target.value);
+            }}
+            placeholder="Cole sua Unsplash Access Key aqui..."
+            style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
+          />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '12px' }}>Grátis em <a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>unsplash.com/developers</a> (50 req/hora)</span>
+
+          <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Pexels API Key (Fotos e Vídeos)</label>
+          <input 
+            type="password" 
+            value={pexelsKey}
+            onChange={(e) => {
+              setPexelsKey(e.target.value);
+              localStorage.setItem('pexels_api_key', e.target.value);
+            }}
+            placeholder="Cole sua Pexels API Key aqui..."
+            style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
+          />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Grátis em <a href="https://www.pexels.com/api" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>pexels.com/api</a> (200 req/hora)</span>
         </div>
       )}
     </aside>
