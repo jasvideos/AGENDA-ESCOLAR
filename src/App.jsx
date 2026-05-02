@@ -502,47 +502,76 @@ function App() {
     setIsRecording(true);
     setRecordedVideoUrl(null);
     
+    console.log('--- Iniciando Processo de Exportação ---');
+    
     const canvas = document.createElement('canvas');
     canvas.width = VIDEO_W;
     canvas.height = VIDEO_H;
-    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true }); // Performance boost
+    const ctx = canvas.getContext('2d', { alpha: false });
     
     const scaleX = VIDEO_W / SLIDE_W;
     const scaleY = VIDEO_H / SLIDE_H;
 
     try {
-      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Iniciando gravação...' });
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Preparando motor de renderização...' });
       
-      // Esconde o canvas mas mantém no DOM para captura
+      // Esconde o canvas mas mantém no DOM de forma que o navegador ainda renderize
       canvas.style.position = 'fixed';
-      canvas.style.top = '-9999px';
-      canvas.style.left = '-9999px';
+      canvas.style.top = '0';
+      canvas.style.left = '0';
+      canvas.style.width = '1px';
+      canvas.style.height = '1px';
+      canvas.style.opacity = '0.01';
+      canvas.style.pointerEvents = 'none';
+      canvas.style.zIndex = '-1';
       document.body.appendChild(canvas);
 
       const stream = canvas.captureStream(30);
-      const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
       
-      const recorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: 8000000 // 8Mbps para alta qualidade
-      });
-
+      // Lista expandida de tipos suportados (WebM e MP4)
+      const types = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4;codecs=h264',
+        'video/mp4'
+      ];
+      
+      const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+      console.log('MIME Type selecionado:', mimeType || 'Padrão do navegador');
+      
+      const recorderOptions = {
+        videoBitsPerSecond: 8000000 // 8Mbps
+      };
+      if (mimeType) recorderOptions.mimeType = mimeType;
+      
+      const recorder = new MediaRecorder(stream, recorderOptions);
       const chunks = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+          console.log(`Chunk recebido: ${e.data.size} bytes`);
+        }
+      };
       
       const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
-          if (chunks.length === 0) return reject(new Error('Nenhum dado de vídeo foi gerado.'));
-          const blob = new Blob(chunks, { type: mimeType });
-          setRecordedVideoUrl(URL.createObjectURL(blob));
+          console.log('Gravação finalizada. Total de chunks:', chunks.length);
+          if (chunks.length === 0) return reject(new Error('O gravador não gerou nenhum dado. Isso pode ser devido a restrições de segurança do navegador (CORS) ou falta de frames.'));
+          const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          setRecordedVideoUrl(url);
           resolve();
         };
-        recorder.onerror = reject;
+        recorder.onerror = (err) => {
+          console.error('Erro no MediaRecorder:', err);
+          reject(err);
+        };
       });
 
-      recorder.start();
-      console.log('--- Início da Gravação ---');
-
+      recorder.start(); // Iniciar gravação contínua
+      
       const FPS = 30;
       const frameDuration = 1000 / FPS;
 
@@ -551,11 +580,10 @@ function App() {
         const slideSeconds = Math.max(1, slide.duration || DEFAULT_DURATION);
         const totalFrames = Math.floor(slideSeconds * FPS);
         
-        console.log(`Renderizando Slide ${i + 1}: ${slide.name} (${slideSeconds}s)`);
+        console.log(`Gravando Slide ${i + 1}/${slides.length}: ${slide.name}`);
         
         for (let f = 0; f < totalFrames; f++) {
-          // Atualiza o progresso visual
-          if (f % 10 === 0) {
+          if (f % 15 === 0) {
             setRecordingProgress({ 
               current: i + 1, 
               total: slides.length, 
@@ -563,30 +591,25 @@ function App() {
             });
           }
 
-          // Renderiza DIRETAMENTE no canvas principal
+          // Renderização principal
           await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
 
-          // Força o encoder a ver uma mudança (pixel de batimento)
-          ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.01)' : 'rgba(1,1,1,0.01)';
+          // Heartbeat pixel para forçar o captureStream a detectar mudança
+          ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.01)';
           ctx.fillRect(0, 0, 1, 1);
 
           await sleep(frameDuration);
-          if (!isRecording) {
-            recorder.stop();
-            document.body.removeChild(canvas);
-            return;
-          }
         }
       }
 
-      console.log('--- Fim da Gravação ---');
       recorder.stop();
       await onStopPromise;
-      document.body.removeChild(canvas);
+      if (document.body.contains(canvas)) document.body.removeChild(canvas);
+      console.log('--- Exportação Concluída com Sucesso ---');
       
     } catch (err) {
       console.error('Erro Fatal na Gravação:', err);
-      alert('Erro ao gerar vídeo: ' + err.message);
+      alert('Erro ao gerar vídeo: ' + (err.message || 'Erro desconhecido. Verifique se há imagens bloqueadas por CORS.'));
       if (document.body.contains(canvas)) document.body.removeChild(canvas);
     } finally {
       setIsRecording(false);
