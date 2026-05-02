@@ -916,6 +916,7 @@ function App() {
           activeSlide={activeSlide} 
           updateSlide={updateSlide}
           openPaintModal={(src, id) => setPaintModalData({ src, elementId: id })}
+          addElement={addElement}
         />
       )}
 

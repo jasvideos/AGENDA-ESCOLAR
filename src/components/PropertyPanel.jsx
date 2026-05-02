@@ -3,11 +3,11 @@ import { Settings, Trash2, Type, Image as ImageIcon, Palette, ArrowUp, ArrowDown
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { bgGallery } from '../templates';
 
-const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, activeSlide, updateSlide, openPaintModal }) => {
+const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, activeSlide, updateSlide, openPaintModal, addElement }) => {
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isGeneratingText, setIsGeneratingText] = useState(false);
-  const [isClipdropProcessing, setIsClipdropProcessing] = useState(false);
   const [isHFProcessing, setIsHFProcessing] = useState(false);
+  const [isOCRProcessing, setIsOCRProcessing] = useState(false);
 
   if (!element) {
     return (
@@ -104,56 +104,48 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     }
   };
 
-  const handleClipdropTool = async (tool) => {
+  const handleGeminiOCR = async () => {
     if (!element.src) return;
-    const apiKey = localStorage.getItem('clipdrop_api_key');
+    const apiKey = localStorage.getItem('gemini_api_key');
     if (!apiKey) {
-      alert('Configure sua Clipdrop API Key nas Configurações do painel esquerdo (⚙️).');
+      alert('Configure sua Gemini API Key nas Configurações (painel esquerdo).');
       return;
     }
-    setIsClipdropProcessing(true);
+    setIsOCRProcessing(true);
     try {
-      let imageBlob;
-      if (element.src.startsWith('data:')) {
-        const res = await fetch(element.src);
-        imageBlob = await res.blob();
+      const blob = await srcToBlob(element.src);
+      const base64Data = await blobToBase64(blob);
+      
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      
+      const prompt = "Extraia todo o texto desta imagem. Retorne apenas o texto extraído, mantendo a quebra de linha original se possível. Não adicione comentários ou formatação markdown de código.";
+      
+      const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64Data, mimeType: 'image/png' } }
+      ]);
+      
+      const extractedText = result.response.text().trim();
+      
+      if (extractedText) {
+        // Adiciona um novo elemento de texto ao slide
+        addElement('text', { 
+          content: extractedText,
+          x: (element.x || 100) + 20,
+          y: (element.y || 100) + 20,
+          w: 400,
+          h: 150
+        });
+        alert('✅ Texto extraído com sucesso! Um novo campo de texto foi adicionado ao slide.');
       } else {
-        const res = await fetch(element.src);
-        imageBlob = await res.blob();
+        alert('Nenhum texto detectado na imagem.');
       }
-
-      const formData = new FormData();
-      formData.append('image_file', imageBlob, 'image.png');
-
-      const endpoints = {
-        'remove-text': 'https://clipdrop-api.co/remove-text/v1',
-        'upscale':     'https://clipdrop-api.co/image-upscaling/v1/upscale',
-      };
-
-      const response = await fetch(endpoints[tool], {
-        method: 'POST',
-        headers: { 'x-api-key': apiKey },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Erro ${response.status}: ${errText || 'Chave inválida ou limite atingido.'}`);
-      }
-
-      const resultBlob = await response.blob();
-      const reader = new FileReader();
-      reader.onloadend = () => updateElement(element.id, { src: reader.result });
-      reader.readAsDataURL(resultBlob);
     } catch (err) {
-      console.error('Clipdrop error:', err);
-      if (err.message.includes('402') || err.message.includes('credits')) {
-        alert('❌ Créditos do Clipdrop Esgotados!\nSua chave gratuita atingiu o limite. Tente usar a ferramenta "🤗 Apagar Fundo (HF Grátis)" ou o "🎨 Pincel".');
-      } else {
-        alert(`Falha na operação Clipdrop: ${err.message}`);
-      }
+      console.error('OCR error:', err);
+      alert(`Falha ao extrair texto: ${err.message}`);
     } finally {
-      setIsClipdropProcessing(false);
+      setIsOCRProcessing(false);
     }
   };
 
@@ -505,20 +497,17 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
             </div>
             <div className="prop-group">
               <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Ferramentas Mágicas (IA)</label>
+              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #10b981, #059669)', color: 'white', border: 'none', opacity: isOCRProcessing ? 0.7 : 1, cursor: isOCRProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleGeminiOCR} disabled={isOCRProcessing}>
+                {isOCRProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Extraindo texto...</>) : (<><Type size={16} style={{ marginRight: '8px' }} /> Extrair Texto (Gemini OCR)</>)}
+              </button>
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #6366f1, #8b5cf6)', color: 'white', border: 'none', opacity: isRemovingBg ? 0.7 : 1, cursor: isRemovingBg ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleRemoveBackground} disabled={isRemovingBg}>
                 {isRemovingBg ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando...</>) : (<><Wand2 size={16} style={{ marginRight: '8px' }} /> Apagar Fundo da Foto</>)}
-              </button>
-              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #0ea5e9, #0284c7)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={() => handleClipdropTool('remove-text')} disabled={isClipdropProcessing}>
-                {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando Clipdrop...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Remover Texto (Clipdrop)</>)}
               </button>
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f97316, #ea580c)', color: 'white', border: 'none', opacity: isHFProcessing ? 0.7 : 1, cursor: isHFProcessing ? 'not-allowed' : 'pointer', marginBottom: '6px' }} onClick={handleHFRemoveBg} disabled={isHFProcessing}>
                 {isHFProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> IA Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> 🤗 Apagar Fundo (HF Grátis)</>)}
               </button>
               <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #7c3aed, #6d28d9)', color: 'white', border: 'none', cursor: 'pointer', marginBottom: '6px' }} onClick={() => openPaintModal(element.src, element.id)}>
                 <Sparkles size={16} style={{ marginRight: '8px' }} /> 🎨 Apagar Texto (Pincel)
-              </button>
-              <button className="button-secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(45deg, #f59e0b, #d97706)', color: 'white', border: 'none', opacity: isClipdropProcessing ? 0.7 : 1, cursor: isClipdropProcessing ? 'not-allowed' : 'pointer' }} onClick={() => handleClipdropTool('upscale')} disabled={isClipdropProcessing}>
-                {isClipdropProcessing ? (<><Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} /> Processando...</>) : (<><Sparkles size={16} style={{ marginRight: '8px' }} /> Melhorar Qualidade (Upscale)</>)}
               </button>
               <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { 100% { transform: rotate(360deg); } }` }} />
             </div>
