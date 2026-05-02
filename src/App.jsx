@@ -320,23 +320,28 @@ function App() {
 
   const loadImage = (src) => new Promise((resolve) => {
     if (!src) return resolve(null);
-    if (assetCache.current.has(src)) return resolve(assetCache.current.get(src));
+    if (assetCache.current.has(src)) {
+      const cached = assetCache.current.get(src);
+      if (cached.complete && cached.naturalWidth !== 0) return resolve(cached);
+    }
 
     const img = new window.Image();
+    // Importante: anonymous permite que o canvas capture imagens de outros domínios (Unsplash/Pexels)
     img.crossOrigin = 'anonymous';
     
     const timeout = setTimeout(() => {
-      console.warn('Image load timeout:', src);
+      console.warn('Timeout ao carregar imagem:', src);
       resolve(null);
-    }, 5000); // 5s timeout
+    }, 8000); // Aumentado para 8s para conexões lentas
 
     img.onload = () => {
       clearTimeout(timeout);
       assetCache.current.set(src, img);
       resolve(img);
     };
-    img.onerror = () => {
+    img.onerror = (e) => {
       clearTimeout(timeout);
+      console.error('Erro ao carregar imagem:', src, e);
       resolve(null);
     };
     img.src = src;
@@ -547,8 +552,8 @@ function App() {
         };
       });
 
-      recorder.start();
-      await sleep(500); // Aguarda o recorder estabilizar
+      recorder.start(100); // Captura em pedaços de 100ms para evitar perdas
+      await sleep(1000); 
 
       const FPS = 30;
 
@@ -557,8 +562,9 @@ function App() {
         const duration = slide.duration || DEFAULT_DURATION;
         const totalFrames = Math.max(1, duration * FPS);
         
-        setRecordingProgress({ current: i + 1, total: slides.length, slideName: `Renderizando ${slide.name}...` });
+        setRecordingProgress({ current: i + 1, total: slides.length, slideName: `Preparando ${slide.name}...` });
 
+        // Pré-renderiza o slide em um canvas offline para garantir nitidez
         const offscreen = document.createElement('canvas');
         offscreen.width = VIDEO_W; offscreen.height = VIDEO_H;
         const offCtx = offscreen.getContext('2d');
@@ -567,19 +573,25 @@ function App() {
         setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
 
         for (let f = 0; f < totalFrames; f++) {
+          // Limpa e desenha no canvas principal que está sendo gravado
           ctx.clearRect(0, 0, VIDEO_W, VIDEO_H);
           ctx.drawImage(offscreen, 0, 0);
           
-          // Batimento imperceptível para manter encoder ativo
-          ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.001)' : 'rgba(255,255,255,0.001)';
-          ctx.fillRect(0,0,1,1);
+          // "Heartbeat" - Um pixel quase invisível que muda de cor a cada frame
+          // Isso força o encoder de vídeo (como o VP8 do Chrome) a entender que o frame é NOVO
+          ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.01)' : 'rgba(1,1,1,0.01)';
+          ctx.fillRect(0, 0, 1, 1);
           
-          await sleep(1000 / FPS);
+          // No último frame do slide, esperamos um pouco mais para garantir a transição
+          const frameDelay = 1000 / FPS;
+          await sleep(frameDelay);
+          
           if (!isRecording) break;
         }
         if (!isRecording) break;
       }
 
+      await sleep(500); // Margem de segurança no fim
       recorder.stop();
       await onStopPromise;
       
