@@ -115,16 +115,34 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     try {
       const blob = await srcToBlob(element.src);
       const base64Data = await blobToBase64(blob);
-      
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
-      const prompt = "Extraia todo o texto desta imagem. Retorne apenas o texto extraído, mantendo a quebra de linha original se possível. Não adicione comentários ou formatação markdown de código.";
-      
-      const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: base64Data, mimeType: 'image/png' } }
-      ]);
+      // Lista de modelos para tentar em ordem de prioridade (Flash é mais rápido, Pro é fallback potente)
+      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+      let result;
+      let lastError;
+
+      for (const modelName of modelsToTry) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const prompt = "Extraia todo o texto desta imagem. Retorne apenas o texto extraído, mantendo a quebra de linha original se possível. Não adicione comentários ou formatação markdown de código.";
+          
+          result = await model.generateContent([
+            prompt,
+            { inlineData: { data: base64Data, mimeType: 'image/png' } }
+          ]);
+          if (result) break; // Sucesso!
+        } catch (err) {
+          lastError = err;
+          if (err.message.includes('404')) {
+            console.warn(`Modelo ${modelName} não encontrado, tentando próximo...`);
+            continue;
+          }
+          throw err; // Outro tipo de erro (ex: 401) interrompe o loop
+        }
+      }
+
+      if (!result) throw lastError;
       
       const extractedText = result.response.text().trim();
       
@@ -282,13 +300,30 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     setIsGeneratingText(true);
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
       const prompts = {
         fix: `Corrija a ortografia e gramática do seguinte texto, mantendo o idioma original. Responda APENAS com o texto corrigido:\n\n${element.content}`,
         improve: `Melhore o seguinte texto para um slide de apresentação profissional. Responda APENAS com o texto melhorado:\n\n${element.content}`,
         summarize: `Resuma o seguinte texto para caber em um slide (curto e impactante). Responda APENAS com o resumo:\n\n${element.content}`,
       };
-      const result = await model.generateContent(prompts[promptType]);
+
+      let result;
+      let lastError;
+
+      for (const modelName of modelsToTry) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          result = await model.generateContent(prompts[promptType]);
+          if (result) break;
+        } catch (err) {
+          lastError = err;
+          if (err.message.includes('404')) continue;
+          throw err;
+        }
+      }
+
+      if (!result) throw lastError;
+
       const text = result.response.text().trim();
       if (text) updateElement(element.id, { content: text });
     } catch (error) {
