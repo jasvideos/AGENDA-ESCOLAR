@@ -681,7 +681,7 @@ function App() {
               <div style={{ position: 'relative' }}>
                 <button className="button-secondary" onClick={() => setShowElementsMenu(!showElementsMenu)}><Sparkles size={18} /> Elementos</button>
                 {showElementsMenu && (
-                  <div className="glass animate-fade-in" style={{ position: 'absolute', top: '45px', left: '0', width: '360px', borderRadius: '10px', zIndex: 100, overflow: 'hidden' }}>
+                  <div className="glass animate-fade-in" style={{ position: 'absolute', top: '45px', left: '0', width: '500px', borderRadius: '10px', zIndex: 100, overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)' }}>
                     {/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
                       <button onClick={() => setElementsTab('library')} style={{ flex: 1, padding: '10px', background: elementsTab === 'library' ? 'var(--accent)' : 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>✨ Biblioteca</button>
@@ -695,7 +695,7 @@ function App() {
                             <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '6px', color: 'var(--text-muted)' }}>{cat.category}</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                               {cat.items.map((it, j) => (
-                                <button key={j} className="button-secondary" onClick={() => { addElement('svg', { svg: it.svg }); setShowElementsMenu(false); }} style={{ width: '40px', height: '40px' }}>
+                                <button key={j} className="button-secondary" onClick={() => { addElement('svg', { svg: it.svg }); setShowElementsMenu(false); }} style={{ width: '55px', height: '55px', padding: '8px' }}>
                                   <div style={{ width: '100%', height: '100%', color: 'white' }} dangerouslySetInnerHTML={{ __html: it.svg }} />
                                 </button>
                               ))}
@@ -739,13 +739,13 @@ function App() {
                             setIconSearchLoading(false);
                           }}>{iconSearchLoading ? '...' : '🔍'}</button>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px', maxHeight: '280px', overflowY: 'auto' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', maxHeight: '350px', overflowY: 'auto' }}>
                           {iconSearchResults.map((iconId, i) => {
                             const [prefix, name] = iconId.split(':');
                             const svgUrl = `https://api.iconify.design/${prefix}/${name}.svg?color=white`;
                             return (
                               <button key={i} className="button-secondary" title={iconId}
-                                style={{ width: '38px', height: '38px', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                style={{ width: '58px', height: '58px', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 onClick={async () => {
                                   try {
                                     const res = await fetch(svgUrl);
