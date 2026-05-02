@@ -725,7 +725,12 @@ function App() {
                                 onClick={async () => {
                                   try {
                                     const res = await fetch(svgUrl);
-                                    const svgText = await res.text();
+                                    let svgText = await res.text();
+                                    // Make SVG monochromatic/dynamic by replacing hardcoded colors with currentColor
+                                    svgText = svgText.replace(/fill="[^"]*"/g, 'fill="currentColor"')
+                                                   .replace(/stroke="[^"]*"/g, 'stroke="currentColor"');
+                                    if (!svgText.includes('fill=')) svgText = svgText.replace('<svg', '<svg fill="currentColor"');
+                                    
                                     addElement('svg', { svg: svgText });
                                     setShowElementsMenu(false);
                                   } catch { alert('Erro ao carregar ícone'); }

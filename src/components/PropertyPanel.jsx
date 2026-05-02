@@ -548,6 +548,13 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
         {element.type === 'svg' && (
           <>
             <div className="prop-group">
+              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '8px', color: 'var(--text-muted)' }}>Cor do Ícone</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input type="color" value={element.style?.color || '#ffffff'} onChange={(e) => handleStyleChange('color', e.target.value)} style={{ width: '40px', height: '40px', padding: 0, border: 'none' }} />
+                <input type="text" value={element.style?.color || '#ffffff'} onChange={(e) => handleStyleChange('color', e.target.value)} style={{ flex: 1 }} />
+              </div>
+            </div>
+            <div className="prop-group">
               <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '8px', color: 'var(--text-muted)' }}>Escalar / Tamanho</label>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <input 
@@ -555,7 +562,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
                   value={parseInt(element.w) || 100} 
                   onChange={(e) => {
                     const val = parseInt(e.target.value);
-                    const ratio = (parseInt(element.h) || 1) / (parseInt(element.w) || 1);
+                    const ratio = (parseFloat(element.h) || 1) / (parseFloat(element.w) || 1);
                     updateElement(element.id, { w: val, h: Math.round(val * ratio) });
                   }} 
                   style={{ flex: 1 }} 
