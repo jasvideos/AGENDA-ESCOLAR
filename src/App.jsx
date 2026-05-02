@@ -651,7 +651,7 @@ function App() {
                 <div className="glass animate-fade-in" style={{ position: 'absolute', top: '110px', left: '230px', width: '180px', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
                   <button className="button-secondary" onClick={() => addElement('shape', { borderRadius: '0px' })}>Retângulo</button>
                   <button className="button-secondary" onClick={() => addElement('shape', { borderRadius: '12px' })}>Arredondado</button>
-                  <button className="button-secondary" onClick={() => addElement('shape', { borderRadius: '100px' })}>Círculo</button>
+                  <button className="button-secondary" onClick={() => addElement('shape', { borderRadius: '50%' })}>Círculo</button>
                 </div>
               )}
               <div style={{ position: 'relative' }}>

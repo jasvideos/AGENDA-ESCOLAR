@@ -138,7 +138,16 @@ const SlideCanvas = ({ slide, selectedElementId, setSelectedElementId, updateEle
               )}
               {el.type === 'svg' && (
                 <div 
-                  style={{ width: '100%', height: '100%', opacity, display: 'flex', alignItems: 'center', justifyContent: 'center', color: el.style?.color || '#ffffff' }}
+                  className="svg-element-container"
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    opacity, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    color: el.style?.color || '#ffffff' 
+                  }}
                   dangerouslySetInnerHTML={{ __html: el.content }}
                 />
               )}

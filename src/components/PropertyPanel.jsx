@@ -526,8 +526,19 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
             {renderOpacityControl()}
             {renderBorderControls()}
             <div className="prop-group">
-              <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Arredondamento: {element.style?.borderRadius || '0px'}</label>
-              <input type="range" min="0" max="100" value={parseInt(element.style?.borderRadius) || 0} onChange={(e) => handleStyleChange('borderRadius', `${e.target.value}px`)} style={{ width: '100%' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Arredondamento: {element.style?.borderRadius || '0px'}</label>
+                <button 
+                  className="button-secondary" 
+                  style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                  onClick={() => handleStyleChange('borderRadius', element.style?.borderRadius === '50%' ? '0px' : '50%')}
+                >
+                  {element.style?.borderRadius === '50%' ? 'Retângulo' : 'Círculo'}
+                </button>
+              </div>
+              {element.style?.borderRadius !== '50%' && (
+                <input type="range" min="0" max="200" value={parseInt(element.style?.borderRadius) || 0} onChange={(e) => handleStyleChange('borderRadius', `${e.target.value}px`)} style={{ width: '100%' }} />
+              )}
             </div>
             {renderRotationControl()}
           </>
@@ -549,7 +560,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
                   }} 
                   style={{ flex: 1 }} 
                 />
-                <span style={{ fontSize: '0.75rem', minWidth: '40px' }}>{Math.round(element.w)}px</span>
+                <span style={{ fontSize: '0.75rem', minWidth: '40px' }}>{Math.round(parseFloat(element.w) || 0)}px</span>
               </div>
             </div>
             {renderOpacityControl()}
