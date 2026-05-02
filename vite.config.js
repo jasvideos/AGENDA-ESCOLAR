@@ -6,12 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     headers: {
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Resource-Policy': 'cross-origin',
+      // Removidos headers restritivos (COEP/COOP) para permitir fetch de APIs externas (HF, Clipdrop)
+      // e carregamento de imagens de terceiros (Unsplash, Pexels) sem erros de CORS severos.
+      'Access-Control-Allow-Origin': '*',
     }
-  },
-  optimizeDeps: {
-    exclude: ['@imgly/background-removal']
   }
 })

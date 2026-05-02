@@ -147,7 +147,11 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       reader.readAsDataURL(resultBlob);
     } catch (err) {
       console.error('Clipdrop error:', err);
-      alert(`Falha na operação Clipdrop: ${err.message}`);
+      if (err.message.includes('402') || err.message.includes('credits')) {
+        alert('❌ Créditos do Clipdrop Esgotados!\nSua chave gratuita atingiu o limite. Tente usar a ferramenta "🤗 Apagar Fundo (HF Grátis)" ou o "🎨 Pincel".');
+      } else {
+        alert(`Falha na operação Clipdrop: ${err.message}`);
+      }
     } finally {
       setIsClipdropProcessing(false);
     }
@@ -207,7 +211,11 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       reader.readAsDataURL(resultBlob);
     } catch (err) {
       console.error('HF RMBG:', err);
-      alert(`🤗 Apagar Fundo (HF): ${err.message}`);
+      if (err.message === 'Failed to fetch') {
+        alert('❌ Erro de Conexão (Hugging Face):\nO navegador bloqueou a requisição ou o servidor está fora do ar. \n\nSOLUÇÃO: Tente fazer o "📁 Upload Local" da imagem primeiro para evitar bloqueios de segurança (CORS).');
+      } else {
+        alert(`🤗 Apagar Fundo (HF): ${err.message}`);
+      }
     } finally {
       setIsHFProcessing(false);
     }
