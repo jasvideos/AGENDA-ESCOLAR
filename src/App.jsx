@@ -501,105 +501,94 @@ function App() {
     if (isRecording) return;
     setIsRecording(true);
     setRecordedVideoUrl(null);
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = VIDEO_W; canvas.height = VIDEO_H;
-      const ctx = canvas.getContext('2d');
-      const scaleX = VIDEO_W / SLIDE_W;
-      const scaleY = VIDEO_H / SLIDE_H;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = VIDEO_W;
+    canvas.height = VIDEO_H;
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true }); // Performance boost
+    
+    const scaleX = VIDEO_W / SLIDE_W;
+    const scaleY = VIDEO_H / SLIDE_H;
 
-      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Iniciando motor gráfico...' });
+    try {
+      setRecordingProgress({ current: 0, total: slides.length, slideName: 'Iniciando gravação...' });
       
+      // Esconde o canvas mas mantém no DOM para captura
       canvas.style.position = 'fixed';
-      canvas.style.top = '-10000px';
-      canvas.style.left = '-10000px';
-      canvas.style.pointerEvents = 'none';
+      canvas.style.top = '-9999px';
+      canvas.style.left = '-9999px';
       document.body.appendChild(canvas);
 
-      // Warm-up
-      for (let i = 0; i < 3; i++) {
-        await renderSlideToCanvas(ctx, slides[0], scaleX, scaleY);
-        await sleep(50);
-      }
-
-      try {
-        canvas.toDataURL(); 
-      } catch (e) {
-        document.body.removeChild(canvas);
-        throw new Error("Segurança: Uma imagem está bloqueando a gravação. Remova as imagens recentes.");
-      }
-
-      const types = ['video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
-      const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+      const stream = canvas.captureStream(30);
+      const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
       
-      const stream = canvas.captureStream(30); 
-      const recorder = new MediaRecorder(stream, { 
+      const recorder = new MediaRecorder(stream, {
         mimeType,
-        videoBitsPerSecond: 5_000_000 
+        videoBitsPerSecond: 8000000 // 8Mbps para alta qualidade
       });
-      
+
       const chunks = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       
       const onStopPromise = new Promise((resolve, reject) => {
         recorder.onstop = () => {
-          document.body.removeChild(canvas);
-          if (chunks.length === 0) return reject(new Error('Erro: O navegador não gerou dados de vídeo.'));
+          if (chunks.length === 0) return reject(new Error('Nenhum dado de vídeo foi gerado.'));
           const blob = new Blob(chunks, { type: mimeType });
-          const url = URL.createObjectURL(blob);
-          setRecordedVideoUrl(url);
+          setRecordedVideoUrl(URL.createObjectURL(blob));
           resolve();
         };
+        recorder.onerror = reject;
       });
 
-      recorder.start(100); // Captura em pedaços de 100ms para evitar perdas
-      await sleep(1000); 
+      recorder.start();
+      console.log('--- Início da Gravação ---');
 
       const FPS = 30;
+      const frameDuration = 1000 / FPS;
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
-        const duration = slide.duration || DEFAULT_DURATION;
-        const totalFrames = Math.max(1, duration * FPS);
+        const slideSeconds = Math.max(1, slide.duration || DEFAULT_DURATION);
+        const totalFrames = Math.floor(slideSeconds * FPS);
         
-        setRecordingProgress({ current: i + 1, total: slides.length, slideName: `Preparando ${slide.name}...` });
-
-        // Pré-renderiza o slide em um canvas offline para garantir nitidez
-        const offscreen = document.createElement('canvas');
-        offscreen.width = VIDEO_W; offscreen.height = VIDEO_H;
-        const offCtx = offscreen.getContext('2d');
-        await renderSlideToCanvas(offCtx, slide, scaleX, scaleY);
-
-        setRecordingProgress({ current: i + 1, total: slides.length, slideName: slide.name });
-
+        console.log(`Renderizando Slide ${i + 1}: ${slide.name} (${slideSeconds}s)`);
+        
         for (let f = 0; f < totalFrames; f++) {
-          // Limpa e desenha no canvas principal que está sendo gravado
-          ctx.clearRect(0, 0, VIDEO_W, VIDEO_H);
-          ctx.drawImage(offscreen, 0, 0);
-          
-          // "Heartbeat" - Um pixel quase invisível que muda de cor a cada frame
-          // Isso força o encoder de vídeo (como o VP8 do Chrome) a entender que o frame é NOVO
+          // Atualiza o progresso visual
+          if (f % 10 === 0) {
+            setRecordingProgress({ 
+              current: i + 1, 
+              total: slides.length, 
+              slideName: `${slide.name} (${Math.round((f/totalFrames)*100)}%)` 
+            });
+          }
+
+          // Renderiza DIRETAMENTE no canvas principal
+          await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
+
+          // Força o encoder a ver uma mudança (pixel de batimento)
           ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.01)' : 'rgba(1,1,1,0.01)';
           ctx.fillRect(0, 0, 1, 1);
-          
-          // No último frame do slide, esperamos um pouco mais para garantir a transição
-          const frameDelay = 1000 / FPS;
-          await sleep(frameDelay);
-          
-          if (!isRecording) break;
+
+          await sleep(frameDuration);
+          if (!isRecording) {
+            recorder.stop();
+            document.body.removeChild(canvas);
+            return;
+          }
         }
-        if (!isRecording) break;
       }
 
-      await sleep(500); // Margem de segurança no fim
+      console.log('--- Fim da Gravação ---');
       recorder.stop();
       await onStopPromise;
+      document.body.removeChild(canvas);
       
-      setIsRecording(false);
-      setRecordingProgress({ current: 0, total: 0, slideName: '' });
     } catch (err) {
-      console.error('Erro na gravação:', err);
-      alert(err.message || 'Erro ao gerar vídeo.');
+      console.error('Erro Fatal na Gravação:', err);
+      alert('Erro ao gerar vídeo: ' + err.message);
+      if (document.body.contains(canvas)) document.body.removeChild(canvas);
+    } finally {
       setIsRecording(false);
       setRecordingProgress({ current: 0, total: 0, slideName: '' });
     }
