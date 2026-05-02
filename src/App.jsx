@@ -51,6 +51,7 @@ function App() {
   const [imageSearchResults, setImageSearchResults] = useState([]);
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
   const [imageSearchTarget, setImageSearchTarget] = useState('element'); // 'element' | 'background'
+  const [imageSearchMode, setImageSearchMode] = useState('photos'); // 'photos' ou 'stickers'
   const [isLooping, setIsLooping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState({ current: 0, total: 0, slideName: '' });
@@ -237,27 +238,37 @@ function App() {
   const searchImages = async () => {
     if (!imageSearchQuery.trim()) return;
     setImageSearchLoading(true);
-    setImageSearchResults([]);
-    const results = [];
+    let results = [];
+    
     try {
-      const uk = localStorage.getItem('unsplash_api_key');
-      if (uk) {
-        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(imageSearchQuery)}&per_page=15&orientation=landscape`, { headers: { Authorization: `Client-ID ${uk}` } });
-        const data = await res.json();
-        (data.results || []).forEach(p => results.push({ url: p.urls.regular, thumb: p.urls.small, author: p.user.name, source: 'Unsplash' }));
+      if (imageSearchMode === 'photos') {
+        const pexelsRes = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageSearchQuery)}&per_page=20`, {
+          headers: { 'Authorization': localStorage.getItem('pexels_api_key') || '' }
+        });
+        if (pexelsRes.ok) {
+          const data = await pexelsRes.json();
+          results = results.concat((data.photos || []).map(p => ({ url: p.src.large, thumb: p.src.medium, author: p.photographer, source: 'Pexels' })));
+        }
+
+        const unsplashRes = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(imageSearchQuery)}&per_page=20`, {
+          headers: { 'Authorization': `Client-ID ${localStorage.getItem('unsplash_access_key') || ''}` }
+        });
+        if (unsplashRes.ok) {
+          const data = await unsplashRes.json();
+          results = results.concat((data.results || []).map(p => ({ url: p.urls.regular, thumb: p.urls.small, author: p.user.name, source: 'Unsplash' })));
+        }
+      } else {
+        // Giphy Stickers Search
+        const giphyRes = await fetch(`https://api.giphy.com/v1/stickers/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(imageSearchQuery)}&limit=40`);
+        if (giphyRes.ok) {
+          const data = await giphyRes.json();
+          results = (data.data || []).map(g => ({ url: g.images.original.url, thumb: g.images.fixed_height.url, author: g.username || 'Giphy', source: 'Giphy' }));
+        }
       }
-    } catch (e) { console.warn('Unsplash:', e); }
-    try {
-      const pk = localStorage.getItem('pexels_api_key');
-      if (pk) {
-        const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageSearchQuery)}&per_page=15&orientation=landscape`, { headers: { Authorization: pk } });
-        const data = await res.json();
-        (data.photos || []).forEach(p => results.push({ url: p.src.large, thumb: p.src.medium, author: p.photographer, source: 'Pexels' }));
-      }
-    } catch (e) { console.warn('Pexels:', e); }
-    if (results.length === 0 && !localStorage.getItem('unsplash_api_key') && !localStorage.getItem('pexels_api_key')) {
-      alert('Configure ao menos uma chave (Unsplash ou Pexels) nas ⚙️ Configurações do painel esquerdo.');
+    } catch (err) {
+      console.error('Erro na busca:', err);
     }
+    
     setImageSearchResults(results);
     setImageSearchLoading(false);
   };
@@ -663,8 +674,9 @@ function App() {
                   <div className="glass animate-fade-in" style={{ position: 'absolute', top: '45px', left: '0', width: '200px', padding: '10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 100 }}>
                     <button className="button-secondary" onClick={() => document.getElementById('local-image-input').click()}>📁 Imagem Local</button>
                     <button className="button-secondary" onClick={() => document.getElementById('bg-image-input').click()}>🖼️ Imagem de Fundo</button>
-                    <button className="button-secondary" onClick={() => { setImageSearchTarget('element'); setShowImageSearch(true); setShowImageMenu(false); }}>🔍 Buscar Fotos Online</button>
-                    <button className="button-secondary" onClick={() => { setImageSearchTarget('background'); setShowImageSearch(true); setShowImageMenu(false); }}>🌄 Buscar Fundo Online</button>
+                    <button className="button-secondary" onClick={() => { setImageSearchTarget('element'); setImageSearchMode('photos'); setShowImageSearch(true); setShowImageMenu(false); }}>🔍 Buscar Fotos Online</button>
+                    <button className="button-secondary" onClick={() => { setImageSearchTarget('background'); setImageSearchMode('photos'); setShowImageSearch(true); setShowImageMenu(false); }}>🌄 Buscar Fundo Online</button>
+                    <button className="button-secondary" onClick={() => { setImageSearchTarget('element'); setImageSearchMode('stickers'); setShowImageSearch(true); setShowImageMenu(false); }}>🎭 Buscar Figurinhas (Stickers)</button>
                   </div>
                 )}
               </div>
@@ -836,7 +848,7 @@ function App() {
                     value={imageSearchQuery}
                     onChange={e => setImageSearchQuery(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && searchImages()}
-                    placeholder="Buscar fotos: escola, natureza, tecnologia..."
+                    placeholder={imageSearchMode === 'photos' ? "Buscar fotos: escola, natureza, tecnologia..." : "Buscar figurinhas: meme, dog, emoji..."}
                     style={{ flex: 1, fontSize: '1rem', padding: '10px 14px', borderRadius: '8px' }}
                     autoFocus
                   />
@@ -845,8 +857,13 @@ function App() {
                   </button>
                 </div>
                 <div style={{ display: 'flex', gap: '6px', fontSize: '0.8rem' }}>
+                  <button onClick={() => setImageSearchMode('photos')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchMode === 'photos' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>📸 Fotos</button>
+                  <button onClick={() => setImageSearchMode('stickers')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchMode === 'stickers' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>🎭 Figurinhas</button>
+                </div>
+                <div style={{ width: '1px', height: '30px', background: 'var(--border)', margin: '0 5px' }}></div>
+                <div style={{ display: 'flex', gap: '6px', fontSize: '0.8rem' }}>
                   <button onClick={() => setImageSearchTarget('element')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchTarget === 'element' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>Inserir no Slide</button>
-                  <button onClick={() => setImageSearchTarget('background')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchTarget === 'background' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>Usar como Fundo</button>
+                  {imageSearchMode === 'photos' && <button onClick={() => setImageSearchTarget('background')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchTarget === 'background' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>Usar como Fundo</button>}
                 </div>
                 <button className="button-secondary" onClick={() => setShowImageSearch(false)} style={{ padding: '8px 14px' }}>✕ Fechar</button>
               </div>
