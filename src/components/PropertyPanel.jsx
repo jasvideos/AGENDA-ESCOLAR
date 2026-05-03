@@ -118,7 +118,9 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       const genAI = new GoogleGenerativeAI(apiKey);
       
       // Lista de modelos para tentar em ordem de prioridade (Flash é mais rápido, Pro é fallback potente)
-      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+      const selectedModel = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
+      const modelsToTry = [selectedModel, 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+
       let result;
       let lastError;
 
@@ -300,7 +302,9 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     setIsGeneratingText(true);
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+      const selectedModel = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
+      const modelsToTry = [selectedModel, 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+
       const prompts = {
         fix: `Corrija a ortografia e gramática do seguinte texto, mantendo o idioma original. Responda APENAS com o texto corrigido:\n\n${element.content}`,
         improve: `Melhore o seguinte texto para um slide de apresentação profissional. Responda APENAS com o texto melhorado:\n\n${element.content}`,

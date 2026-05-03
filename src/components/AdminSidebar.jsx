@@ -13,6 +13,12 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
   const [unsplashKey, setUnsplashKey] = useState(localStorage.getItem('unsplash_api_key') || '');
   const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('pexels_api_key') || '');
   const [hfKey, setHfKey] = useState(localStorage.getItem('hf_api_key') || '');
+  const [giphyKey, setGiphyKey] = useState(localStorage.getItem('giphy_api_key') || '');
+  const [googleSearchKey, setGoogleSearchKey] = useState(localStorage.getItem('google_search_api_key') || '');
+  const [googleSearchCx, setGoogleSearchCx] = useState(localStorage.getItem('google_search_cx') || '');
+  const [geminiModel, setGeminiModel] = useState(localStorage.getItem('gemini_model') || 'gemini-1.5-flash');
+
+
 
   const handleOpenSettings = () => {
     const hasPin = !!localStorage.getItem('settings_pin');
@@ -231,6 +237,20 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
             placeholder="Cole sua Gemini API Key aqui..."
             style={{ width: '100%', marginBottom: '10px', fontSize: '0.8rem' }}
           />
+          <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Modelo Gemini</label>
+          <select 
+            value={geminiModel}
+            onChange={(e) => {
+              setGeminiModel(e.target.value);
+              localStorage.setItem('gemini_model', e.target.value);
+            }}
+            style={{ width: '100%', marginBottom: '10px', fontSize: '0.8rem' }}
+          >
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Rápido)</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Mais Inteligente)</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash (Experimental)</option>
+          </select>
+
           <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '5px', color: 'var(--text-muted)' }}>Remove.bg API Key (Remover Fundo)</label>
           <input 
             type="password" 
@@ -283,6 +303,45 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
             style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
           />
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Grátis em <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>huggingface.co/settings/tokens</a> — Remover texto, limpar imagens</span>
+
+          <label style={{ display: 'block', fontSize: '0.8rem', marginTop: '12px', marginBottom: '5px', color: 'var(--text-muted)' }}>🎬 Giphy API Key (Figurinhas)</label>
+          <input 
+            type="password" 
+            value={giphyKey}
+            onChange={(e) => {
+              setGiphyKey(e.target.value);
+              localStorage.setItem('giphy_api_key', e.target.value);
+            }}
+            placeholder="Cole sua Giphy API Key aqui..."
+            style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
+          />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Grátis em <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>developers.giphy.com</a></span>
+
+          <label style={{ display: 'block', fontSize: '0.8rem', marginTop: '12px', marginBottom: '5px', color: 'var(--text-muted)' }}>🔍 Google Search API Key</label>
+          <input 
+            type="password" 
+            value={googleSearchKey}
+            onChange={(e) => {
+              setGoogleSearchKey(e.target.value);
+              localStorage.setItem('google_search_api_key', e.target.value);
+            }}
+            placeholder="Chave da API do Google..."
+            style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
+          />
+          
+          <label style={{ display: 'block', fontSize: '0.8rem', marginTop: '8px', marginBottom: '5px', color: 'var(--text-muted)' }}>🆔 Google Search Engine ID (CX)</label>
+          <input 
+            type="text" 
+            value={googleSearchCx}
+            onChange={(e) => {
+              setGoogleSearchCx(e.target.value);
+              localStorage.setItem('google_search_cx', e.target.value);
+            }}
+            placeholder="ID do mecanismo de busca (cx)..."
+            style={{ width: '100%', marginBottom: '4px', fontSize: '0.8rem' }}
+          />
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Configurar em <a href="https://programmablesearchengine.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>programmablesearchengine.google.com</a></span>
+
 
           <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
             <button style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', width: '100%' }}

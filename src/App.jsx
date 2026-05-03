@@ -51,7 +51,8 @@ function App() {
   const [imageSearchResults, setImageSearchResults] = useState([]);
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
   const [imageSearchTarget, setImageSearchTarget] = useState('element'); // 'element' | 'background'
-  const [imageSearchMode, setImageSearchMode] = useState('photos'); // 'photos' ou 'stickers'
+  const [imageSearchMode, setImageSearchMode] = useState('photos'); // 'photos', 'stickers' ou 'google'
+
   const [isLooping, setIsLooping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState({ current: 0, total: 0, slideName: '' });
@@ -257,14 +258,40 @@ function App() {
           const data = await unsplashRes.json();
           results = results.concat((data.results || []).map(p => ({ url: p.urls.regular, thumb: p.urls.small, author: p.user.name, source: 'Unsplash' })));
         }
-      } else {
+      } else if (imageSearchMode === 'stickers') {
         // Giphy Stickers Search
-        const giphyRes = await fetch(`https://api.giphy.com/v1/stickers/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(imageSearchQuery)}&limit=40`);
+        const giphyApiKey = localStorage.getItem('giphy_api_key') || 'dc6zaTOxFJmzC';
+        const giphyRes = await fetch(`https://api.giphy.com/v1/stickers/search?api_key=${giphyApiKey}&q=${encodeURIComponent(imageSearchQuery)}&limit=40`);
         if (giphyRes.ok) {
           const data = await giphyRes.json();
           results = (data.data || []).map(g => ({ url: g.images.original.url, thumb: g.images.fixed_height.url, author: g.username || 'Giphy', source: 'Giphy' }));
         }
+      } else if (imageSearchMode === 'google') {
+        // Google Custom Search API
+        const googleApiKey = localStorage.getItem('google_search_api_key');
+        const googleCx = localStorage.getItem('google_search_cx');
+        
+        if (!googleApiKey || !googleCx) {
+          alert('Configure sua Google Search API Key e CX nas Configurações (⚙️).');
+          setImageSearchLoading(false);
+          return;
+        }
+
+        const googleRes = await fetch(`https://www.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${googleCx}&q=${encodeURIComponent(imageSearchQuery)}&searchType=image&num=10`);
+        if (googleRes.ok) {
+          const data = await googleRes.json();
+          results = (data.items || []).map(item => ({ 
+            url: item.link, 
+            thumb: item.image.thumbnailLink, 
+            author: item.displayLink, 
+            source: 'Google' 
+          }));
+        } else {
+          const errData = await googleRes.json();
+          throw new Error(errData.error?.message || 'Erro na busca do Google');
+        }
       }
+
     } catch (err) {
       console.error('Erro na busca:', err);
     }
@@ -677,6 +704,8 @@ function App() {
                     <button className="button-secondary" onClick={() => { setImageSearchTarget('element'); setImageSearchMode('photos'); setShowImageSearch(true); setShowImageMenu(false); }}>🔍 Buscar Fotos Online</button>
                     <button className="button-secondary" onClick={() => { setImageSearchTarget('background'); setImageSearchMode('photos'); setShowImageSearch(true); setShowImageMenu(false); }}>🌄 Buscar Fundo Online</button>
                     <button className="button-secondary" onClick={() => { setImageSearchTarget('element'); setImageSearchMode('stickers'); setShowImageSearch(true); setShowImageMenu(false); }}>🎭 Buscar Figurinhas (Stickers)</button>
+                    <button className="button-secondary" onClick={() => { setImageSearchTarget('element'); setImageSearchMode('google'); setShowImageSearch(true); setShowImageMenu(false); }}>🌐 Buscar no Google</button>
+
                   </div>
                 )}
               </div>
