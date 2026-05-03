@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Layout, Download, Upload, Settings, ChevronDown, Clock } from 'lucide-react';
+import { Plus, Trash2, Layout, Download, Upload, Settings, ChevronDown, Clock, Search, Sparkles } from 'lucide-react';
 import { slideTemplates } from '../templates';
+import SlideThumbnail from './SlideThumbnail';
 
-const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, deleteSlide, setExternalState, updateSlide }) => {
+const AdminSidebar = ({ 
+  slides, activeSlideId, setActiveSlideId, addSlide, deleteSlide, setExternalState, updateSlide,
+  currentView, setCurrentView 
+}) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [settingsUnlocked, setSettingsUnlocked] = useState(false);
@@ -90,27 +94,46 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
         </h2>
       </div>
 
+      {/* Navegação Principal */}
+      <div style={{ padding: '10px', display: 'flex', gap: '5px', borderBottom: '1px solid var(--border)' }}>
+        <button 
+          className={currentView === 'editor' ? 'button-primary' : 'button-secondary'}
+          onClick={() => setCurrentView('editor')}
+          style={{ flex: 1, padding: '8px', fontSize: '0.8rem', justifyContent: 'center' }}
+        >
+          <Layout size={16} /> Editor
+        </button>
+        <button 
+          className={currentView === 'ai-search' ? 'button-primary' : 'button-secondary'}
+          onClick={() => setCurrentView('ai-search')}
+          style={{ flex: 1, padding: '8px', fontSize: '0.8rem', justifyContent: 'center' }}
+        >
+          <Search size={16} /> Busca IA
+        </button>
+      </div>
+
       <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {slides.map((slide, index) => (
             <div 
               key={slide.id}
-              onClick={() => setActiveSlideId(slide.id)}
+              onClick={() => { setActiveSlideId(slide.id); setCurrentView('editor'); }}
               style={{
-                padding: '10px 12px',
+                padding: '10px',
                 borderRadius: '8px',
-                background: activeSlideId === slide.id ? 'var(--accent)' : 'var(--bg-card)',
+                background: activeSlideId === slide.id ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-card)',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '8px',
+                gap: '10px',
                 transition: 'all 0.2s',
-                border: activeSlideId === slide.id ? 'none' : '1px solid var(--border)',
-                animation: 'fadeIn 0.3s ease-out'
+                border: activeSlideId === slide.id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                animation: 'fadeIn 0.3s ease-out',
+                position: 'relative'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, opacity: 0.9 }}>
                   {index + 1}. {slide.name}
                 </span>
                 <button 
@@ -118,15 +141,17 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
                     e.stopPropagation();
                     deleteSlide(slide.id);
                   }}
-                  style={{ background: 'transparent', border: 'none', color: 'white', opacity: 0.6, cursor: 'pointer' }}
+                  style={{ background: 'transparent', border: 'none', color: 'white', opacity: 0.4, cursor: 'pointer' }}
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={14} />
                 </button>
               </div>
+
+              <SlideThumbnail slide={slide} width={210} height={118} />
               
               {/* Per-slide duration */}
               <div 
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.85 }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.85, background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '4px', alignSelf: 'flex-start' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <Clock size={12} style={{ flexShrink: 0, opacity: 0.7 }} />
@@ -137,14 +162,14 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
                   value={slide.duration ?? 5}
                   onChange={(e) => updateSlide(slide.id, { duration: Math.max(1, Number(e.target.value)) })}
                   style={{
-                    width: '45px',
-                    background: 'rgba(255,255,255,0.12)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '4px',
-                    padding: '2px 4px',
+                    width: '35px',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '0',
                     fontSize: '0.75rem',
                     textAlign: 'center',
-                    color: 'inherit'
+                    color: 'inherit',
+                    fontWeight: 'bold'
                   }}
                   title="Duração deste slide (segundos)"
                 />
@@ -188,7 +213,7 @@ const AdminSidebar = ({ slides, activeSlideId, setActiveSlideId, addSlide, delet
       </div>
 
       {showSettings && (
-        <div style={{ padding: '15px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
+        <div style={{ padding: '15px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', maxHeight: '400px', overflowY: 'auto' }}>
 
           {/* ── TELA DE SENHA ── */}
           {!settingsUnlocked && (

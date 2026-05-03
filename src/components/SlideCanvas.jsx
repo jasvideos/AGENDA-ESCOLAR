@@ -10,7 +10,7 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r},${g},${b},${alpha})`;
 };
 
-const SlideCanvas = ({ slide, selectedElementId, setSelectedElementId, updateElement, readOnly, deleteElement }) => {
+const SlideCanvas = ({ slide, selectedElementId, setSelectedElementId, updateElement, readOnly, deleteElement, snapToGrid, gridSize }) => {
   if (!slide) return <div className="flex-center" style={{ height: '100%', color: 'var(--text-muted)' }}>Selecione ou crie um slide</div>;
 
   const canvasWidth = 960;
@@ -68,7 +68,9 @@ const SlideCanvas = ({ slide, selectedElementId, setSelectedElementId, updateEle
         position: 'relative',
         overflow: 'hidden',
         flexShrink: 0,
-        border: readOnly ? 'none' : '1px solid var(--border)'
+        border: readOnly ? 'none' : '1px solid var(--border)',
+        backgroundImage: snapToGrid ? `radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)` : 'none',
+        backgroundSize: snapToGrid ? `${gridSize}px ${gridSize}px` : 'auto'
       }}
     >
       {slide.bgImage && (

@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import AdminSidebar from './components/AdminSidebar';
 import SlideCanvas from './components/SlideCanvas';
 import PropertyPanel from './components/PropertyPanel';
-import { Plus, Play, Square, Type, Image as ImageIcon, Circle, Repeat, Video, Undo, Redo, QrCode, Loader2, Sparkles } from 'lucide-react';
+import AISearchPage from './components/AISearchPage';
+import { Plus, Play, Square, Type, Image as ImageIcon, Circle, Repeat, Video, Undo, Redo, QrCode, Loader2, Sparkles, Search } from 'lucide-react';
 import { useHistory } from './hooks/useHistory';
 import QRCode from 'qrcode';
 import { decorativeElements } from './templates';
+import { renderSlideToCanvas } from './utils/renderer';
 
 const STORAGE_KEY = 'anix_slides_data';
 
@@ -65,6 +67,10 @@ function App() {
   const [copiedElement, setCopiedElement] = useState(null);
   const [paintModalData, setPaintModalData] = useState(null); // { src, elementId }
   const [iconSize, setIconSize] = useState(100);
+  const [currentView, setCurrentView] = useState('editor'); // 'editor' | 'ai-search'
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [gridSize, setGridSize] = useState(10);
+  const [imageSearchError, setImageSearchError] = useState('');
   const activeSlideIdRef = useRef(activeSlideId);
   const assetCache = useRef(new Map()); // Global cache for images and SVGs
 
@@ -239,6 +245,7 @@ function App() {
   const searchImages = async () => {
     if (!imageSearchQuery.trim()) return;
     setImageSearchLoading(true);
+    setImageSearchError('');
     let results = [];
     
     try {
@@ -249,6 +256,8 @@ function App() {
         if (pexelsRes.ok) {
           const data = await pexelsRes.json();
           results = results.concat((data.photos || []).map(p => ({ url: p.src.large, thumb: p.src.medium, author: p.photographer, source: 'Pexels' })));
+        } else {
+          setImageSearchError('Erro ao buscar no Pexels. Verifique sua chave API.');
         }
 
         const unsplashRes = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(imageSearchQuery)}&per_page=20`, {
@@ -257,6 +266,8 @@ function App() {
         if (unsplashRes.ok) {
           const data = await unsplashRes.json();
           results = results.concat((data.results || []).map(p => ({ url: p.urls.regular, thumb: p.urls.small, author: p.user.name, source: 'Unsplash' })));
+        } else {
+          setImageSearchError('Erro ao buscar no Unsplash. Verifique sua chave API.');
         }
       } else if (imageSearchMode === 'stickers') {
         // Giphy Stickers Search
@@ -265,6 +276,8 @@ function App() {
         if (giphyRes.ok) {
           const data = await giphyRes.json();
           results = (data.data || []).map(g => ({ url: g.images.original.url, thumb: g.images.fixed_height.url, author: g.username || 'Giphy', source: 'Giphy' }));
+        } else {
+          setImageSearchError('Erro ao buscar no Giphy. Verifique sua chave API.');
         }
       } else if (imageSearchMode === 'google') {
         // Google Custom Search API
@@ -272,7 +285,7 @@ function App() {
         const googleCx = localStorage.getItem('google_search_cx');
         
         if (!googleApiKey || !googleCx) {
-          alert('Configure sua Google Search API Key e CX nas Configurações (⚙️).');
+          setImageSearchError('Configure sua Google Search API Key e CX nas Configurações (⚙️).');
           setImageSearchLoading(false);
           return;
         }
@@ -309,15 +322,26 @@ function App() {
       setSelectedElementId(newEl.id);
     }
     setShowImageSearch(false);
+    setImageSearchError('');
   };
 
   const updateElement = (elementId, updates) => {
+    let finalUpdates = { ...updates };
+    
+    // Snap to grid for position and size
+    if (snapToGrid) {
+      if (finalUpdates.x !== undefined) finalUpdates.x = Math.round(finalUpdates.x / gridSize) * gridSize;
+      if (finalUpdates.y !== undefined) finalUpdates.y = Math.round(finalUpdates.y / gridSize) * gridSize;
+      if (finalUpdates.w !== undefined) finalUpdates.w = Math.round(finalUpdates.w / gridSize) * gridSize;
+      if (finalUpdates.h !== undefined) finalUpdates.h = Math.round(finalUpdates.h / gridSize) * gridSize;
+    }
+
     setSlides(slides.map(s => 
       s.id === activeSlideId 
         ? {
             ...s,
             elements: s.elements.map(el => 
-              el.id === elementId ? { ...el, ...updates } : el
+              el.id === elementId ? { ...el, ...finalUpdates } : el
             )
           }
         : s
@@ -387,150 +411,15 @@ function App() {
 
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-  const renderSlideToCanvas = async (ctx, slide, scaleX, scaleY) => {
-    ctx.clearRect(0, 0, VIDEO_W, VIDEO_H);
-    ctx.fillStyle = slide.bgColor || '#111827';
-    ctx.fillRect(0, 0, VIDEO_W, VIDEO_H);
-
-    if (slide.bgImage) {
-      const bgImg = await loadImage(slide.bgImage);
-      if (bgImg) {
-        const opacity = slide.bgOpacity !== undefined ? slide.bgOpacity : 1;
-        ctx.globalAlpha = opacity;
-        const ar = bgImg.width / bgImg.height;
-        const canvasAr = VIDEO_W / VIDEO_H;
-        let sx, sy, sw, sh;
-        if (ar > canvasAr) {
-          sh = bgImg.height; sw = sh * canvasAr;
-          sx = (bgImg.width - sw) / 2; sy = 0;
-        } else {
-          sw = bgImg.width; sh = sw / canvasAr;
-          sx = 0; sy = (bgImg.height - sh) / 2;
-        }
-        ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, VIDEO_W, VIDEO_H);
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    for (const el of slide.elements) {
-      const cx = el.x * scaleX;
-      const cy = el.y * scaleY;
-      const w = (parseFloat(el.w) || 0) * scaleX;
-      const h = (parseFloat(el.h) || 0) * scaleY;
-      const opacity = el.style?.opacity !== undefined ? el.style.opacity : 1;
-      const rotation = el.rotation || 0;
-
-      ctx.save();
-      if (rotation !== 0) {
-        ctx.translate(cx + w / 2, cy + h / 2);
-        ctx.rotate((rotation * Math.PI) / 180);
-        ctx.translate(-(cx + w / 2), -(cy + h / 2));
-      }
-      ctx.globalAlpha = opacity;
-      const x = cx, y = cy;
-
-      const hexToRgba = (hex, alpha) => {
-        const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-        return `rgba(${r},${g},${b},${alpha})`;
-      };
-
-      if (el.type === 'image') {
-        const img = await loadImage(el.src);
-        if (img) ctx.drawImage(img, x, y, w, h);
-      } else if (el.type === 'shape') {
-        const radius = Math.min(parseInt(el.style?.borderRadius) || 0, w / 2, h / 2);
-        ctx.beginPath();
-        if (radius > 0) {
-          ctx.moveTo(x + radius, y); ctx.arcTo(x + w, y, x + w, y + h, radius);
-          ctx.arcTo(x + w, y + h, x, y + h, radius); ctx.arcTo(x, y + h, x, y, radius);
-          ctx.arcTo(x, y, x + w, y, radius); ctx.closePath();
-        } else { ctx.rect(x, y, w, h); }
-        if (el.style?.useGradient && el.style?.gradientColor) {
-          const grad = ctx.createLinearGradient(x, y, x + w, y + h);
-          grad.addColorStop(0, el.style.backgroundColor || '#6366f1');
-          grad.addColorStop(1, el.style.gradientColor);
-          ctx.fillStyle = grad;
-        } else { ctx.fillStyle = el.style?.backgroundColor || '#6366f1'; }
-        ctx.fill();
-        const bw = parseInt(el.style?.borderWidth) || 0;
-        if (bw > 0) { ctx.strokeStyle = el.style?.borderColor || '#ffffff'; ctx.lineWidth = bw * scaleX; ctx.stroke(); }
-      } else if (el.type === 'text') {
-        const fontSize = parseFloat(el.style?.fontSize) || 20;
-        const fontFamily = el.style?.fontFamily || 'Inter';
-        const fontWeight = el.style?.fontWeight || 'normal';
-        const color = el.style?.color || '#ffffff';
-        const bg = el.style?.backgroundColor;
-        const hasBg = bg && bg !== 'transparent';
-        if (hasBg) {
-          const bgOpacity = el.style?.bgOpacity !== undefined ? el.style.bgOpacity : 1;
-          ctx.globalAlpha = bgOpacity;
-          if (el.style?.useGradient && el.style?.gradientColor) {
-            const grad = ctx.createLinearGradient(x, y, x + w, y + h);
-            const c1 = bg.startsWith('#') ? hexToRgba(bg, bgOpacity) : bg;
-            const c2 = el.style.gradientColor.startsWith('#') ? hexToRgba(el.style.gradientColor, bgOpacity) : el.style.gradientColor;
-            grad.addColorStop(0, c1); grad.addColorStop(1, c2);
-            ctx.fillStyle = grad;
-          } else { ctx.fillStyle = bg.startsWith('#') ? hexToRgba(bg, bgOpacity) : bg; }
-          const r = 4 * scaleX;
-          ctx.beginPath();
-          ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
-          ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
-          ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
-          const bw = parseInt(el.style?.borderWidth) || 0;
-          if (bw > 0) { ctx.strokeStyle = el.style?.borderColor || '#ffffff'; ctx.lineWidth = bw * scaleX; ctx.stroke(); }
-          ctx.globalAlpha = opacity;
-        }
-        ctx.fillStyle = color;
-        ctx.font = `${fontWeight} ${fontSize * scaleY}px '${fontFamily}', sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const words = (el.content || '').split(' ');
-        const maxWidth = w - 40 * scaleX;
-        const lineHeight = fontSize * scaleY * 1.3;
-        const lines = []; let line = '';
-        for (const word of words) {
-          const test = line ? `${line} ${word}` : word;
-          if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; } else { line = test; }
-        }
-        if (line) lines.push(line);
-        const totalH = lines.length * lineHeight;
-        const startY = y + h / 2 - totalH / 2 + lineHeight / 2;
-        lines.forEach((l, i) => ctx.fillText(l, x + w / 2, startY + i * lineHeight, maxWidth));
-      } else if (el.type === 'qrcode') {
-        try {
-          const qrDataUrl = await QRCode.toDataURL(el.content || 'https://anix.com', { width: Math.round(w), margin: 1, color: { dark: '#000000', light: '#ffffff' } });
-          const qrImg = await loadImage(qrDataUrl);
-          if (qrImg) {
-            ctx.fillStyle = '#ffffff';
-            const pad = 10 * scaleX, r = 8 * scaleX;
-            ctx.beginPath();
-            ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
-            ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
-            ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
-            ctx.drawImage(qrImg, x + pad, y + pad, w - pad * 2, h - pad * 2);
-          }
-        } catch {}
-      } else if (el.type === 'svg') {
-        try {
-          const color = el.style?.color || '#ffffff';
-          const cacheKey = `svg-${el.id}-${color}`;
-          let svgImg = assetCache.current.get(cacheKey);
-
-          if (!svgImg) {
-            const svgString = (el.content || '').replace(/currentColor/g, color);
-            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            svgImg = await loadImage(url);
-            if (svgImg) assetCache.current.set(cacheKey, svgImg);
-            // URL.revokeObjectURL(url); // Don't revoke if we cache the img object
-          }
-
-          if (svgImg) ctx.drawImage(svgImg, x, y, w, h);
-        } catch (err) {
-          console.error("SVG Render Error:", err);
-        }
-      }
-      ctx.restore();
-    }
+  const renderSlide = async (ctx, slide, scaleX, scaleY) => {
+    await renderSlideToCanvas(ctx, slide, {
+      width: VIDEO_W,
+      height: VIDEO_H,
+      origW: SLIDE_W,
+      origH: SLIDE_H,
+      assetCache: assetCache.current,
+      QRCode
+    });
   };
 
   const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
@@ -630,7 +519,7 @@ function App() {
           }
 
           // Renderização principal
-          await renderSlideToCanvas(ctx, slide, scaleX, scaleY);
+          await renderSlide(ctx, slide, scaleX, scaleY);
 
           // Heartbeat pixel para forçar o captureStream a detectar mudança
           ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.01)';
@@ -687,10 +576,15 @@ function App() {
         <AdminSidebar 
           slides={slides} activeSlideId={activeSlideId} setActiveSlideId={setActiveSlideId}
           addSlide={addSlide} deleteSlide={deleteSlide} setExternalState={setExternalState} updateSlide={updateSlide}
+          currentView={currentView} setCurrentView={setCurrentView}
         />
       )}
       
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+        {currentView === 'ai-search' ? (
+          <AISearchPage />
+        ) : (
+          <>
         {!isPresenting && (
           <header className="glass" style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', zIndex: 10 }}>
             <div style={{ display: 'flex', gap: '15px' }}>
@@ -815,6 +709,9 @@ function App() {
                 )}
               </div>
               <button className="button-secondary" onClick={() => addElement('qrcode')}><QrCode size={18} /> QR Code</button>
+              <button className="button-secondary" onClick={() => setSnapToGrid(!snapToGrid)} title="Alternar Snap to Grid">
+                {snapToGrid ? '🧲 Grid: On' : '🔓 Grid: Off'}
+              </button>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
                <button className="button-secondary" onClick={undo}><Undo size={16} /></button>
@@ -857,7 +754,15 @@ function App() {
             justifyContent: 'center',
             position: 'relative'
           }}>
-            <SlideCanvas slide={activeSlide} selectedElementId={selectedElementId} setSelectedElementId={setSelectedElementId} updateElement={updateElement} readOnly={isPresenting} deleteElement={deleteElement} />
+            <SlideCanvas 
+              slide={activeSlide} 
+              selectedElementId={selectedElementId} 
+              setSelectedElementId={setSelectedElementId} 
+              updateElement={updateElement}
+              deleteElement={deleteElement}
+              snapToGrid={snapToGrid}
+              gridSize={gridSize}
+            />
           </div>
         </div>
 
@@ -894,13 +799,18 @@ function App() {
                   <button onClick={() => setImageSearchTarget('element')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchTarget === 'element' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>Inserir no Slide</button>
                   {imageSearchMode === 'photos' && <button onClick={() => setImageSearchTarget('background')} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: imageSearchTarget === 'background' ? 'var(--accent)' : 'transparent', color: 'white', cursor: 'pointer' }}>Usar como Fundo</button>}
                 </div>
-                <button className="button-secondary" onClick={() => setShowImageSearch(false)} style={{ padding: '8px 14px' }}>✕ Fechar</button>
+                <button className="button-secondary" onClick={() => { setShowImageSearch(false); setImageSearchError(''); }} style={{ padding: '8px 14px' }}>✕ Fechar</button>
               </div>
               {/* Grid */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
                 {imageSearchLoading && (
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                     <Loader2 size={36} className="animate-spin" style={{ color: 'var(--accent)' }} />
+                  </div>
+                )}
+                {imageSearchError && (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#f87171', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>
+                    ⚠️ {imageSearchError}
                   </div>
                 )}
                 {!imageSearchLoading && imageSearchResults.length === 0 && (
@@ -975,7 +885,9 @@ function App() {
             </div>
           </div>
         )}
-      </main>
+      </>
+    )}
+  </main>
 
       {!isPresenting && (
         <PropertyPanel 
