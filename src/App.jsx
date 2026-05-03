@@ -13,8 +13,8 @@ const STORAGE_KEY = 'anix_slides_data';
 
 const SLIDE_W = 960;
 const SLIDE_H = 540;
-const VIDEO_W = 1280;
-const VIDEO_H = 720;
+const VIDEO_W = 1920;
+const VIDEO_H = 1080;
 const DEFAULT_DURATION = 5;
 
 const initialSlides = [
@@ -43,7 +43,13 @@ function App() {
     const parsed = saved ? JSON.parse(saved) : initialSlides;
     return parsed.map(s => ({ duration: DEFAULT_DURATION, ...s }));
   });
-  const [activeSlideId, setActiveSlideId] = useState(slides[0]?.id);
+  const [activeSlideId, setActiveSlideId] = useState('slide-1');
+
+  useEffect(() => {
+    if (slides && slides.length > 0 && slides[0].id) {
+      setActiveSlideId(slides[0].id);
+    }
+  }, []);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [isPresenting, setIsPresenting] = useState(false);
   const [showShapeMenu, setShowShapeMenu] = useState(false);

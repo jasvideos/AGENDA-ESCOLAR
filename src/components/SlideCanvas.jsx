@@ -135,7 +135,7 @@ const SlideCanvas = ({ slide, selectedElementId, setSelectedElementId, updateEle
               )}
               {el.type === 'qrcode' && (
                 <div style={{ width: '100%', height: '100%', background: 'white', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity }}>
-                  <QRCodeSVG value={el.content || 'https://anix.com'} style={{ width: '100%', height: '100%' }} />
+                  <QRCodeSVG value={String(el.content || 'https://anix.com')} style={{ width: '100%', height: '100%' }} />
                 </div>
               )}
               {el.type === 'svg' && (
