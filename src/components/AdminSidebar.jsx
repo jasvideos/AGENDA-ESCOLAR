@@ -12,14 +12,14 @@ const AdminSidebar = ({
   const [settingsUnlocked, setSettingsUnlocked] = useState(false);
   const [settingsPinInput, setSettingsPinInput] = useState('');
   const [settingsPinError, setSettingsPinError] = useState('');
-  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-  const [bgRemoveKey, setBgRemoveKey] = useState(localStorage.getItem('bg_remove_api_key') || '');
-  const [unsplashKey, setUnsplashKey] = useState(localStorage.getItem('unsplash_api_key') || '');
-  const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('pexels_api_key') || '');
-  const [hfKey, setHfKey] = useState(localStorage.getItem('hf_api_key') || '');
-  const [giphyKey, setGiphyKey] = useState(localStorage.getItem('giphy_api_key') || '');
-  const [googleSearchKey, setGoogleSearchKey] = useState(localStorage.getItem('google_search_api_key') || '');
-  const [googleSearchCx, setGoogleSearchCx] = useState(localStorage.getItem('google_search_cx') || '');
+  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '');
+  const [bgRemoveKey, setBgRemoveKey] = useState(localStorage.getItem('bg_remove_api_key') || import.meta.env.VITE_BG_REMOVE_API_KEY || '');
+  const [unsplashKey, setUnsplashKey] = useState(localStorage.getItem('unsplash_api_key') || import.meta.env.VITE_UNSPLASH_API_KEY || '');
+  const [pexelsKey, setPexelsKey] = useState(localStorage.getItem('pexels_api_key') || import.meta.env.VITE_PEXELS_API_KEY || '');
+  const [hfKey, setHfKey] = useState(localStorage.getItem('hf_api_key') || import.meta.env.VITE_HF_API_KEY || '');
+  const [giphyKey, setGiphyKey] = useState(localStorage.getItem('giphy_api_key') || import.meta.env.VITE_GIPHY_API_KEY || '');
+  const [googleSearchKey, setGoogleSearchKey] = useState(localStorage.getItem('google_search_api_key') || import.meta.env.VITE_GOOGLE_SEARCH_KEY || '');
+  const [googleSearchCx, setGoogleSearchCx] = useState(localStorage.getItem('google_search_cx') || import.meta.env.VITE_GOOGLE_SEARCH_CX || '');
   const [geminiModel, setGeminiModel] = useState(localStorage.getItem('gemini_model') || 'gemini-1.5-flash');
 
 

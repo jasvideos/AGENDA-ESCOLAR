@@ -57,7 +57,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
   const handleRemoveBackground = async () => {
     if (!element.src) return;
     
-    const apiKey = localStorage.getItem('bg_remove_api_key');
+    const apiKey = localStorage.getItem('bg_remove_api_key') || import.meta.env.VITE_BG_REMOVE_API_KEY || '';
     if (!apiKey) {
       alert('Configure sua Remove.bg API Key nas Configurações do painel esquerdo (botão ⚙️ Configurações).');
       return;
@@ -106,7 +106,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
 
   const handleGeminiOCR = async () => {
     if (!element.src) return;
-    const apiKey = localStorage.getItem('gemini_api_key');
+    const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
     if (!apiKey) {
       alert('Configure sua Gemini API Key nas Configurações (painel esquerdo).');
       return;
@@ -117,9 +117,8 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       const base64Data = await blobToBase64(blob);
       const genAI = new GoogleGenerativeAI(apiKey);
       
-      // Lista de modelos para tentar em ordem de prioridade (Flash é mais rápido, Pro é fallback potente)
-      const selectedModel = localStorage.getItem('gemini_model') || 'gemini-1.5-flash';
-      const modelsToTry = [selectedModel, 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
+      // Tentar nomes de modelos mais genéricos e estáveis
+      const modelsToTry = ['gemini-1.5-flash', 'gemini-pro-vision', 'gemini-1.0-pro-vision-latest'];
 
       let result;
       let lastError;
@@ -190,7 +189,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
   // 🤗 HF — Remover Fundo (briaai/RMBG-1.4) — formato binário correto
   const handleHFRemoveBg = async () => {
     if (!element.src) return;
-    const hfKey = localStorage.getItem('hf_api_key');
+    const hfKey = localStorage.getItem('hf_api_key') || import.meta.env.VITE_HF_API_KEY || '';
     if (!hfKey) {
       alert('Configure sua Hugging Face API Key nas Configurações (⚙️).\nGrátis em huggingface.co/settings/tokens');
       return;
@@ -199,14 +198,13 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
     try {
       const blob = await srcToBlob(element.src);
       const response = await fetch(
-        'https://api-inference.huggingface.co/models/briaai/RMBG-1.4',
+        "https://api-inference.huggingface.co/models/briaai/RMBG-1.4",
         {
-          method: 'POST',
-          headers: {
+          headers: { 
             Authorization: `Bearer ${hfKey}`,
-            'Content-Type': 'image/png',
-            'X-Wait-For-Model': 'true',
+            "X-Wait-For-Model": "true"
           },
+          method: "POST",
           body: blob,
         }
       );
@@ -297,7 +295,7 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
 
   const generateAIText = async (promptType) => {
     if (!element.content) return;
-    const apiKey = localStorage.getItem('gemini_api_key');
+    const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
     if (!apiKey) { alert('Configure sua Gemini API Key nas Configurações (painel esquerdo).'); return; }
     setIsGeneratingText(true);
     try {

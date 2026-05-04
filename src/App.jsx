@@ -127,6 +127,26 @@ function App() {
   }, [undo, redo, isPresenting, activeSlide, selectedElementId, copiedElement]);
 
   useEffect(() => {
+    // Sincronização de chaves do .env para o navegador
+    const keysToSync = {
+      'gemini_api_key': import.meta.env.VITE_GEMINI_API_KEY,
+      'giphy_api_key': import.meta.env.VITE_GIPHY_API_KEY,
+      'unsplash_api_key': import.meta.env.VITE_UNSPLASH_API_KEY,
+      'pexels_api_key': import.meta.env.VITE_PEXELS_API_KEY,
+      'hf_api_key': import.meta.env.VITE_HF_API_KEY,
+      'google_search_api_key': import.meta.env.VITE_GOOGLE_SEARCH_KEY,
+      'google_search_cx': import.meta.env.VITE_GOOGLE_SEARCH_CX,
+      'bg_remove_api_key': import.meta.env.VITE_BG_REMOVE_API_KEY
+    };
+
+    Object.entries(keysToSync).forEach(([key, val]) => {
+      if (val) {
+        localStorage.setItem(key, val);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     if (isPresenting) {
       const handleResize = () => {
         setPresentationScale(Math.min(window.innerWidth / 960, window.innerHeight / 540));
@@ -257,7 +277,7 @@ function App() {
     try {
       if (imageSearchMode === 'photos') {
         const pexelsRes = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(imageSearchQuery)}&per_page=20`, {
-          headers: { 'Authorization': localStorage.getItem('pexels_api_key') || '' }
+          headers: { 'Authorization': localStorage.getItem('pexels_api_key') || import.meta.env.VITE_PEXELS_API_KEY || '' }
         });
         if (pexelsRes.ok) {
           const data = await pexelsRes.json();
@@ -267,7 +287,7 @@ function App() {
         }
 
         const unsplashRes = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(imageSearchQuery)}&per_page=20`, {
-          headers: { 'Authorization': `Client-ID ${localStorage.getItem('unsplash_access_key') || ''}` }
+          headers: { 'Authorization': `Client-ID ${localStorage.getItem('unsplash_access_key') || import.meta.env.VITE_UNSPLASH_API_KEY || ''}` }
         });
         if (unsplashRes.ok) {
           const data = await unsplashRes.json();
@@ -277,7 +297,7 @@ function App() {
         }
       } else if (imageSearchMode === 'stickers') {
         // Giphy Stickers Search
-        const giphyApiKey = localStorage.getItem('giphy_api_key') || 'dc6zaTOxFJmzC';
+        const giphyApiKey = localStorage.getItem('giphy_api_key') || import.meta.env.VITE_GIPHY_API_KEY || 'dc6zaTOxFJmzC';
         const giphyRes = await fetch(`https://api.giphy.com/v1/stickers/search?api_key=${giphyApiKey}&q=${encodeURIComponent(imageSearchQuery)}&limit=40`);
         if (giphyRes.ok) {
           const data = await giphyRes.json();
@@ -287,8 +307,8 @@ function App() {
         }
       } else if (imageSearchMode === 'google') {
         // Google Custom Search API
-        const googleApiKey = localStorage.getItem('google_search_api_key');
-        const googleCx = localStorage.getItem('google_search_cx');
+        const googleApiKey = localStorage.getItem('google_search_api_key') || import.meta.env.VITE_GOOGLE_SEARCH_KEY || '';
+        const googleCx = localStorage.getItem('google_search_cx') || import.meta.env.VITE_GOOGLE_SEARCH_CX || '';
         
         if (!googleApiKey || !googleCx) {
           setImageSearchError('Configure sua Google Search API Key e CX nas Configurações (⚙️).');
