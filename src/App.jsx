@@ -131,7 +131,6 @@ function App() {
     const keysToSync = {
       'gemini_api_key': import.meta.env.VITE_GEMINI_API_KEY,
       'giphy_api_key': import.meta.env.VITE_GIPHY_API_KEY,
-      'unsplash_api_key': import.meta.env.VITE_UNSPLASH_API_KEY,
       'pexels_api_key': import.meta.env.VITE_PEXELS_API_KEY,
       'hf_api_key': import.meta.env.VITE_HF_API_KEY,
       'google_search_api_key': import.meta.env.VITE_GOOGLE_SEARCH_KEY,
@@ -286,15 +285,6 @@ function App() {
           setImageSearchError('Erro ao buscar no Pexels. Verifique sua chave API.');
         }
 
-        const unsplashRes = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(imageSearchQuery)}&per_page=20`, {
-          headers: { 'Authorization': `Client-ID ${localStorage.getItem('unsplash_access_key') || import.meta.env.VITE_UNSPLASH_API_KEY || ''}` }
-        });
-        if (unsplashRes.ok) {
-          const data = await unsplashRes.json();
-          results = results.concat((data.results || []).map(p => ({ url: p.urls.regular, thumb: p.urls.small, author: p.user.name, source: 'Unsplash' })));
-        } else {
-          setImageSearchError('Erro ao buscar no Unsplash. Verifique sua chave API.');
-        }
       } else if (imageSearchMode === 'stickers') {
         // Giphy Stickers Search
         const giphyApiKey = localStorage.getItem('giphy_api_key') || import.meta.env.VITE_GIPHY_API_KEY || 'dc6zaTOxFJmzC';
@@ -608,7 +598,7 @@ function App() {
       
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
         {currentView === 'ai-search' ? (
-          <AISearchPage />
+          <AISearchPage addSlide={addSlide} />
         ) : (
           <>
         {!isPresenting && (
