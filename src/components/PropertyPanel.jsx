@@ -116,8 +116,6 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       const blob = await srcToBlob(element.src);
       const base64Data = await blobToBase64(blob);
       const genAI = new GoogleGenerativeAI(apiKey);
-      
-      const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const prompt = "Extraia todo o texto desta imagem. Retorne apenas o texto extraído, sem comentários.";
