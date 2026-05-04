@@ -117,8 +117,8 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       const base64Data = await blobToBase64(blob);
       const genAI = new GoogleGenerativeAI(apiKey);
       
-      // Tentar nomes de modelos mais genéricos e estáveis
-      const modelsToTry = ['gemini-1.5-flash', 'gemini-pro-vision', 'gemini-1.0-pro-vision-latest'];
+      // Modelo universal mais compatível hoje
+      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest'];
 
       let result;
       let lastError;
