@@ -117,33 +117,22 @@ const PropertyPanel = ({ element, updateElement, deleteElement, reorderElement, 
       const base64Data = await blobToBase64(blob);
       const genAI = new GoogleGenerativeAI(apiKey);
       
-      // Modelo universal mais compatível hoje
-      const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      let result;
-      let lastError;
-
-      for (const modelName of modelsToTry) {
-        try {
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const prompt = "Extraia todo o texto desta imagem. Retorne apenas o texto extraído, mantendo a quebra de linha original se possível. Não adicione comentários ou formatação markdown de código.";
-          
-          result = await model.generateContent([
-            prompt,
-            { inlineData: { data: base64Data, mimeType: 'image/png' } }
-          ]);
-          if (result) break; // Sucesso!
-        } catch (err) {
-          lastError = err;
-          if (err.message.includes('404')) {
-            console.warn(`Modelo ${modelName} não encontrado, tentando próximo...`);
-            continue;
+      const prompt = "Extraia todo o texto desta imagem. Retorne apenas o texto extraído, sem comentários.";
+      
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: "image/png"
           }
-          throw err; // Outro tipo de erro (ex: 401) interrompe o loop
         }
-      }
-
-      if (!result) throw lastError;
+      ]);
+      
+      if (!result || !result.response) throw new Error("Resposta vazia do Google.");
       
       const extractedText = result.response.text().trim();
       
