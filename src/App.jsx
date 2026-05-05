@@ -162,20 +162,7 @@ function App() {
     activeSlideIdRef.current = activeSlideId;
   }, [activeSlideId]);
 
-  useEffect(() => {
-    if (!isLooping || slides.length <= 1) return;
-    const currentSlide = slides.find(s => s.id === activeSlideId);
-    const duration = (currentSlide?.duration || DEFAULT_DURATION) * 1000;
-    const timer = setTimeout(() => {
-      setSlides(prevSlides => {
-        const currentIndex = prevSlides.findIndex(s => s.id === activeSlideIdRef.current);
-        const nextIndex = (currentIndex + 1) % prevSlides.length;
-        setActiveSlideId(prevSlides[nextIndex].id);
-        return prevSlides;
-      });
-    }, duration);
-    return () => clearTimeout(timer);
-  }, [isLooping, activeSlideId, slides]);
+  // Duplicate presentation loop removed here to fix 'descentralizado' bugs and avoid conflicting state updates.
 
   const addSlide = (template = null) => {
     const newSlide = {
@@ -518,6 +505,13 @@ function App() {
       const FPS = 30;
       const frameDuration = 1000 / FPS;
 
+      // Usar um canvas offscreen evita o problema de 'tela piscando'.
+      // A renderização async desenha primeiro no offscreen, depois copiamos para o gravador de forma síncrona.
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = VIDEO_W;
+      offscreenCanvas.height = VIDEO_H;
+      const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
+
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
         const slideSeconds = Math.max(1, slide.duration || DEFAULT_DURATION);
@@ -534,8 +528,11 @@ function App() {
             });
           }
 
-          // Renderização principal
-          await renderSlide(ctx, slide, scaleX, scaleY);
+          // Renderização principal em offscreen (async)
+          await renderSlide(offscreenCtx, slide, scaleX, scaleY);
+
+          // Copia o quadro totalmente renderizado para o canvas gravador (sync)
+          ctx.drawImage(offscreenCanvas, 0, 0);
 
           // Heartbeat pixel para forçar o captureStream a detectar mudança
           ctx.fillStyle = f % 2 === 0 ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.01)';
