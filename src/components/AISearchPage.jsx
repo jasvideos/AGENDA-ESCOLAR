@@ -96,40 +96,28 @@ const AISearchPage = ({ addSlide }) => {
     }
   };
 
-  const generateImage = async () => {
+  const generateImage = () => {
     if (!query.trim()) return;
-    const hfKey = getHFKey();
-    if (!hfKey) {
-      setError('Por favor, configure sua Hugging Face API Key para gerar imagens (⚙️).');
-      return;
-    }
 
     setIsGeneratingImage(true);
     setError('');
 
-    try {
-      const response = await fetch(
-        "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
-        {
-          headers: { 
-            Authorization: `Bearer ${hfKey}`,
-            "Content-Type": "application/json"
-          },
-          method: "POST",
-          body: JSON.stringify({ inputs: query }),
-        }
-      );
-
-      if (!response.ok) throw new Error("Erro na geração da imagem. Verifique sua chave HF.");
-
-      const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
-      setGeneratedImages([imageUrl, ...generatedImages]);
-    } catch (err) {
-      setError('Erro ao gerar imagem: ' + err.message);
-    } finally {
+    const encodedQuery = encodeURIComponent(query);
+    const randomSeed = Math.floor(Math.random() * 1000000);
+    // Pollinations.ai generates images freely without API keys or CORS issues
+    const url = `https://image.pollinations.ai/prompt/${encodedQuery}?seed=${randomSeed}&nologo=true&width=800&height=600`;
+    
+    // We use an Image object to preload the image instead of fetch to avoid 403 blocks
+    const img = new Image();
+    img.onload = () => {
+      setGeneratedImages([url, ...generatedImages]);
       setIsGeneratingImage(false);
-    }
+    };
+    img.onerror = () => {
+      setError("Erro ao carregar a imagem gerada da Pollinations. Tente outro termo.");
+      setIsGeneratingImage(false);
+    };
+    img.src = url;
   };
 
   const createSlideFromTemplate = (data) => {
